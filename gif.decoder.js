@@ -53,13 +53,11 @@ const DM_OVERDRAW_PICTURE_2 = 3;
 * DECODING
 */
 var grabPalette = function( arrayBuffer, palette, start, colorCount ) {
-
 	for( var i = start, j = 0, k = 0; j < colorCount; j++ ) {
 		palette[k++] = arrayBuffer[i++]; // r
 		palette[k++] = arrayBuffer[i++]; // g
 		palette[k++] = arrayBuffer[i++]; // b
 	}
-
 };
 
 var getHeader = function( arrayBuffer, header ) {
@@ -187,7 +185,6 @@ var processExtensionBlock = function( arrayBuffer, start ) {
 		commentExtension.comment = comment.join( '' );
 		commentExtension.nextBlockAddress = comment.length + 1 // +1 to omit the block terminator
 		return commentExtension;
-
 	}
 
 	console.error( 'unknown extension code:', arrayBuffer[start+1] );
@@ -535,6 +532,7 @@ DEBUG = true;
 self.addEventListener( 'message', function( e ) {
 	openFile( e.data, function( arrayBuffer ) {
 		if( !arrayBuffer ) {
+			self.postMessage( null );
 			return;
 		}
 		//console.log( arrayBuffer );
@@ -547,6 +545,5 @@ self.addEventListener( 'message', function( e ) {
 		} else {
 			self.postMessage( imagesBlock );
 		}
-
 	} );
 } );
