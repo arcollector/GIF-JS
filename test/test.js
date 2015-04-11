@@ -2,14 +2,23 @@
 * TEST
 */
 
-GIF.init( '.picture' );
+// in firefox you need to setup the option fileuri.strict_origin_policy to false
+// in chrome you need to enable the flag access-files-from-file
 
-var filenameURL = 'interlace.gif'; // LZWMinCodeSize = 2
+var libPath = '../';
+
+GIF.init( {
+	canvasSelector: '.picture',
+	libPath: '../',
+	imagesPath: 'test/',
+} );
+
+var filenameURL = 'interlace.gif'; // LZWMinCodeSize = 2 && isInterlaced
 var filenameURL = 'sample_1.gif'; // LZWMinCodeSize = 2
-var filenameURL = 'cb_interlaced.gif'; // LZWMinCodeSize = 8
+var filenameURL = 'cb_interlaced.gif'; // LZWMinCodeSize = 8 && isInterlaced
 var filenameURL = 'uncompressed_GIF.gif'; // LZWMinCodeSize = 7
-var filenameURL = 'dummkopfs.gif'; // LZWMinCodeSize = 8
 var filenameURL = 'sample_2_animation.gif'; // LZWMinCodeSize = 3 && imageBlock.top & imageBlock.left not zero
+var filenameURL = 'dummkopfs.gif'; // LZWMinCodeSize = 8
 
 // *************************************
 // DECODING EXAMPLE

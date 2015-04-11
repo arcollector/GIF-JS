@@ -2,25 +2,31 @@
 * GIF
 */
 var GIF = {
-	init: function( canvasSelector ) {
+	init: function( options ) {
 		this.$canvas = null;
 		this.ctx = null;
-		if( canvasSelector ) {
-			this.$canvas = document.querySelector( canvasSelector );
+		if( options.canvasSelector ) {
+			this.$canvas = document.querySelector( options.canvasSelector );
 			if( !this.$canvas ) {
-				console.error( 'missing elem <canvas> with selector', canvasSelector );
+				console.error( 'missing elem <canvas> with selector', options.canvasSelector );
 				return;
 			}
 			this.ctx = this.$canvas.getContext( '2d' );
 		}
 
-		this.decoder = new Worker( 'gif.decoder.js');
+		var path = options.libPath || '';
+		path += this._checkPathCorrectness( path );
+
+		this.decoder = new Worker( path + 'gif.decoder.js');
 		this.decoder.addEventListener( 'message', this._decoded.bind( this ) );
 
-		this.encoder = new Worker( 'gif.encoder.js');
+		this.encoder = new Worker( path + 'gif.encoder.js');
 		this.encoder.addEventListener( 'message', this._encoded.bind( this ) );
 
 		this._callback = null;
+
+		this._imagesPath = options.imagesPath || '';
+		this._imagesPath += this._checkPathCorrectness( this._imagesPath );
 	},
 	decode: function( filenameURL, callback ) {
 		if( typeof callback !== 'function' ) {
@@ -28,7 +34,7 @@ var GIF = {
 			return;
 		}
 		this._callback = callback;
-		this.decoder.postMessage( filenameURL );
+		this.decoder.postMessage( this._imagesPath + filenameURL );
 	},
 	_decoded: function( e ) {
 		this._callCallback( e.data );
@@ -71,11 +77,14 @@ var GIF = {
 		document.body.appendChild( $a );
 		$a.click();
 		document.body.removeChild( $a );
-		URL.revokeObjectURL( objectURL );
+		//URL.revokeObjectURL( objectURL ); // in firefox this does not work
 	},
 	_callCallback: function( data ) {
 		var callback = this._callback;
 		this._callback = null;
 		callback( data );
 	},
+	_checkPathCorrectness: function( path ) {
+		return path.substring( path.length-1 ) !== '/' ? '/' : '';
+	}
 };

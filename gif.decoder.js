@@ -482,8 +482,7 @@ var processFile = function( arrayBuffer, imagesBlock ) {
 	var commentExtension = null;
 	var blockData;
 	for( var nextBlockAddress = header.nextBlockAddress; !isEOF( arrayBuffer, nextBlockAddress ); nextBlockAddress = blockData.nextBlockAddress ) {
-		blockData = processExtensionBlock( arrayBuffer, nextBlockAddress );
-		if( blockData ) {
+		if( (blockData = processExtensionBlock( arrayBuffer, nextBlockAddress )) ) {
 			switch( blockData.type ) {
 				case GRAPHICS_CONTROL_EXTENSION: {
 					graphicsControlExtension = blockData;
@@ -510,21 +509,21 @@ var processFile = function( arrayBuffer, imagesBlock ) {
 					return false;
 				}
 			}
-		} else {
-			blockData = getImageBlock( arrayBuffer, nextBlockAddress, header, graphicsControlExtension );
-			if( blockData ) {
-				DEBUG&&console.log( 'image block', imagesBlock.length, blockData );
-				if( !prepareCanvas( blockData, imagesBlock ) ) {
-					return false;
-				}
-				if( !decompressImageBlock( arrayBuffer, blockData ) ) {
-					return false;
-				}
-				imagesBlock.push( blockData );
+		} else if( (blockData = getImageBlock( arrayBuffer, nextBlockAddress, header, graphicsControlExtension )) ) {
+			DEBUG&&console.log( 'image block', imagesBlock.length, blockData );
+			if( !prepareCanvas( blockData, imagesBlock ) ) {
+				return false;
 			}
+			if( !decompressImageBlock( arrayBuffer, blockData ) ) {
+				return false;
+			}
+			imagesBlock.push( blockData );
+		} else {
+			console.error( 'something wrong has ocurred with the gif file decompression' );
+			return false;
 		}
 	}
-	//console.log( imagesBlock, imagesBlock.length );
+	//DEBUG&&console.log( imagesBlock, imagesBlock.length );
 	return true;
 };
 
@@ -532,6 +531,7 @@ var processFile = function( arrayBuffer, imagesBlock ) {
 * MAIN
 */
 DEBUG = true;
+
 self.addEventListener( 'message', function( e ) {
 	openFile( e.data, function( arrayBuffer ) {
 		if( !arrayBuffer ) {
