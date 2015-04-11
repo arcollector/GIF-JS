@@ -353,8 +353,8 @@ var createFile = function( options ) {
     var bitmaps = options.bitmaps;
 
     var netscapeApplicationExtension = null;
-    if( bitmaps.length > 1 ) {
-        netscapeApplicationExtension = createNestscapeApplicationExtension();
+    if( bitmaps.length > 1 ) { // more than 1 image means an animated gif
+        netscapeApplicationExtension = createNestscapeApplicationExtension(); // create animation block
     }
     var netscapeApplicationExtensionLength = ( netscapeApplicationExtension ? netscapeApplicationExtension.length : 0 );
 
@@ -386,6 +386,10 @@ var createFile = function( options ) {
         if( bitmap.left + bitmap.width > options.canvasWidth || bitmap.top + bitmap.height > options.canvasHeight || bitmap.left < 0 || bitmap.top < 0 ) {
             console.error( 'image left/top parameters are overflowed' );
             return null;
+        }
+        if( bitmap.isInterlaced && bitmap.height < 5 ) {
+            console.warn( 'interlaced does not work in in such small image (less than 5 pixels height)' );
+            bitmap.isInterlaced = false;
         }
 
         var graphicsControlExtension = createGraphicsControlExtension( {
