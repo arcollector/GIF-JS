@@ -225,7 +225,8 @@ var compressImageData = function( options ) {
         }
         // byteCount is only incremented when a full byte (ie: its 8 bits has been completely used)
         if( byteCount >= 255 ) {
-            byteCount -= 255; // note the i <= bytes, so you always has to reallocate at least the last one byte
+            byteCount -= 255;
+            // note the i <= byteCount in the for loop, you always have to reallocate at least one byte
             // to make room for the next byte count byte of the incoming sub block
             for( var i = 0, j = codeStreamIndex; i <= byteCount; i++, j-- ) { // reallocate overflowed bytes
                 codeStream[j+1] = codeStream[j];
@@ -235,12 +236,13 @@ var compressImageData = function( options ) {
             codeStreamIndex++; // increment by one, becuase you have reallocated at least one byte
         }
         if( code === endOfInformationCode ) {
-            // setup the reamming sub block, remember how byteCount is incremented,
+            // setup the remaining sub block, remember how byteCount is incremented,
             // so maybe a partial byte is been used but still not completed, bitsShifter will tell us
             // this information, in this case byteCount need to be incremented by one unit to include
             // this partial used byte
-            codeStream[codeStreamIndex - byteCount - 1] = byteCount + (bitsShifter > 0 ? 1 : 0);
-            codeStreamIndex += (bitsShifter > 0 ? 1 : 0); // make room for the block terminator code
+            var inc = bitsShifter > 0 ? 1 : 0;
+            codeStream[codeStreamIndex - byteCount - 1] = byteCount + inc;
+            codeStreamIndex += inc; // make room for the block terminator code
         }
     };
 
@@ -249,7 +251,7 @@ var compressImageData = function( options ) {
 
     var wasClearCode = true;
 
-    // Read first index from index stream. This value is now the value for the index buffer
+    // Read first index from index stream.
     var prevK = getColorIndex();
     if( prevK === COLOR_INDEX_NOT_IN_PALETTE ) {
         return null;
@@ -300,9 +302,8 @@ var compressImageData = function( options ) {
         } else {
             // make a new entry
             codeTable[stringCode] = codeTableIndex;
-            // just write prevK
+            // write prevK
             writeCode( prevK );
-
             // save k for the next round
             prevK = k;
 
