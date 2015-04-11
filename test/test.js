@@ -9,8 +9,8 @@ var libPath = '../';
 
 GIF.init( {
 	canvasSelector: '.picture',
-	libPath: '../',
-	imagesPath: 'test/',
+	libPath: '../', // relative from the ubication of this file
+	imagesPath: 'test/', // relative from the ubication of gif.decoder.js file
 } );
 
 var filenameURL = 'interlace.gif'; // LZWMinCodeSize = 2 && isInterlaced
@@ -64,9 +64,7 @@ GIF.decode( filenameURL, function( imagesBlock ) {
 		backgroundColorIndex: imagesBlock[0].backgroundColorIndex,
 		colorBits: imagesBlock[0].colorBits,
 		palette: imagesBlock[0].palette, // also know as the global palette, optional if each image block has it own local palette
-
 		bitmaps: bitmaps,
-
 	}, function( file ) {
 		GIF.download( file );
 	} );
