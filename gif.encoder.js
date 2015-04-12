@@ -41,10 +41,6 @@ var createHeader = function( options ) {
     // header[12] is the aspect ratio, it can be omitted without regrets
 
     if( options.palette ) {
-        if( options.palette.length > 768 ) {
-            console.error( 'palette has more than 256 colors' );
-            return null;
-        }
         for( var i = 0, l = options.palette.length, j = 13; i < l; i++, j++ ) {
             header[j] = options.palette[i];
         }
@@ -91,7 +87,7 @@ var createNestscapeApplicationExtension = function() {
 
     netscapeApplicationExtension[14] = 3; // byte count follwing
     netscapeApplicationExtension[15] = 1; // always 1
-    setInt( netscapeApplicationExtension, 16, 0 );
+    setInt( netscapeApplicationExtension, 16, 0 ); // 0 to make endless animation
 
     return netscapeApplicationExtension;
 };
@@ -144,10 +140,6 @@ var compressImageData = function( options ) {
     // because GIF file only support 256 colors using a color indexes scheme
     // we need a mapping mechanism to translate from a RGB color value
     // to an index color value, // ie: 255,255,255 -> 0
-    if( options.palette.length > 768 ) {
-        console.error( 'palette bigger than 256 entries' );
-        return null;
-    }
     for( var i = 0, l = options.palette.length, colorIndex = 0; i < l; colorIndex++ ) {
         var colorDictIndex = options.palette[i++]+','+options.palette[i++]+','+options.palette[i++];
         if( colorDictIndex in paletteDict ) {
@@ -248,7 +240,6 @@ var compressImageData = function( options ) {
 
     // Always start by sending a clear code to the code stream.
     writeCode( clearCode );
-
     var wasClearCode = true;
 
     // Read first index from index stream.
@@ -340,16 +331,19 @@ var createFile = function( options ) {
         return null;
     }
 
+    var globalPalette = options.palette || null;
+    if( globalPalette && ( globalPalette.length === 0 || globalPalette.length > 768 ) ) {
+        console.error( 'global palette length is erroneous' );
+        return null;
+    }
+
     var header = createHeader( {
         canvasWidth: options.canvasWidth,
         canvasHeight: options.canvasHeight,
         colorBits: options.colorBits,
-        palette: options.palette || null,
+        palette: globalPalette,
         backgroundColorIndex: options.backgroundColorIndex || 0,
     } );
-    if( !header ) {
-        return null;
-    }
 
     var bitmaps = options.bitmaps;
 
@@ -364,20 +358,22 @@ var createFile = function( options ) {
     for( var i = 0, l = bitmaps.length; i < l; i++ ) {
         var bitmap = bitmaps[i];
 
-        if( !bitmap.colorBits && !options.colorBits ) {
-            console.error( 'missing colorBits paramenter' );
-            return null;
-        }
         var colorBits = bitmap.colorBits || options.colorBits || 0;
         if( colorBits < 1 || colorBits > 8 ) {
-            console.error( 'bad color bits param' );
+            console.error( 'bad colorBits value' );
             return null;
         }
-        var palette = bitmap.palette || options.palette || null;
-        if( !palette ) {
+
+        var localPalette = bitmap.palette || null;
+        if( !localPalette && !globalPalette ) { // we need one palette!!
             console.error( 'missing a palette at image num', i );
             return null;
         }
+        if( localPalette && ( localPalette.length === 0 || localPalette.length > 768 ) ) {
+            console.error( 'local palette length is erroneous at image num', i );
+            return null;
+        }
+
         if( bitmap.width > options.canvasWidth || bitmap.height > options.canvasHeight || bitmap.width < 0 || bitmap.height < 0 ) {
             console.error( 'image dimensions are larger than the canvas dimensions' );
             return null;
@@ -388,6 +384,7 @@ var createFile = function( options ) {
             console.error( 'image left/top parameters are overflowed' );
             return null;
         }
+
         if( bitmap.isInterlaced && bitmap.height < 5 ) {
             console.warn( 'interlaced does not work in in such small image (less than 5 pixels height)' );
             bitmap.isInterlaced = false;
@@ -400,19 +397,21 @@ var createFile = function( options ) {
             disposalMethod: bitmap.disposalMethod || 0,
         } );
 
+        var isInterlaced = bitmap.isInterlaced || false;
+
         var imageBlock = createImageBlock( {
             top: bitmap.top,
             left: bitmap.left,
             width: bitmap.width,
             height: bitmap.height,
-            palette: palette,
-            colorBits: colorBits,
-            isInterlaced: bitmap.isInterlaced || false,
+            palette: localPalette || null,
+            colorBits: localPalette ? colorBits : 0,
+            isInterlaced: isInterlaced
         } );
 
         var compressedImageData = compressImageData( {
             imageData: bitmap.imageData,
-            palette: palette,
+            palette: localPalette || globalPalette, // localPalette takes precendence
             top: bitmap.top || 0,
             left: bitmap.left || 0,
             width: bitmap.width,
@@ -420,7 +419,7 @@ var createFile = function( options ) {
             canvasWidth: options.canvasWidth,
             canvasHeight: options.canvasHeight,
             LZWMinCodeSize: colorBits,
-            isInterlaced: bitmap.isInterlaced || false,
+            isInterlaced: isInterlaced,
             isUncompressed: bitmap.isUncompressed || false,
         } );
         if( !compressedImageData ) {
