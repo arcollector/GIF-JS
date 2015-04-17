@@ -212,7 +212,7 @@ var getImageBlock = function( arrayBuffer, start, header, graphicsControlExtensi
 		imageBlock.colorCount = 1 << imageBlock.colorBits;
 		var paletteSize = 3*imageBlock.colorCount;
 		imageBlock.palette = new Uint8Array( paletteSize );
-		grabPalette( arrayBuffer, palette, start + 10, imageBlock.colorCount );
+		grabPalette( arrayBuffer, imageBlock.palette, start + 10, imageBlock.colorCount );
 		imageBlock.compressImageAddress = start + 10 + paletteSize;
 	} else { // use header palette data
 		imageBlock.colorBits = header.colorBits;
@@ -285,6 +285,10 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 
 	var arrayBufferIndex = imageBlock.compressImageAddress;
 	var LZWMinCodeSize = arrayBuffer[arrayBufferIndex++]; // at first is the LZWMinCodeSize value...
+	if( LZWMinCodeSize < 2 || LZWMinCodeSize > 8 ) {
+		console.error( 'LZWMinCodeSize:', LZWMinCodeSize, 'is erroneus' );
+		return false;
+	}
 
 	var scanLine = new Uint8Array( imageBlock.width*2 ); // make some room
 	var scanLineIndex = 0;
@@ -427,8 +431,7 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 		}
 
 		if( codeTableIndex === curMaxCode && bitsThreshold !== 12 ) {
-			bitsThreshold++;
-			curMaxCode = (1 << bitsThreshold) - 1;
+			curMaxCode = (1 << ++bitsThreshold) - 1;
 			//DEBUG&&console.log( 'incrementing bitsThreshold to', bitsThreshold );
 		}
 		codeTableIndex++;

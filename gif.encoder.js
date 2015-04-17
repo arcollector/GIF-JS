@@ -41,7 +41,7 @@ var createHeader = function( options ) {
     // header[12] is the aspect ratio, it can be omitted without regrets
 
     if( options.palette ) {
-        for( var i = 0, l = options.palette.length, j = 13; i < l; i++, j++ ) {
+        for( var i = 0, paletteSize = (1 << options.colorBits) * 3, j = 13; i < paletteSize; i++, j++ ) {
             header[j] = options.palette[i];
         }
     }
@@ -110,7 +110,7 @@ var createImageBlock = function( options ) {
     imageBlock[9] = (options.palette ? (1<<7) : 0) | (options.isInterlaced ? (1<<6) : 0) | (options.palette ? options.colorBits - 1 : 0);
 
     if( options.palette ) {
-        for( var i = 0, colorCount = (1 << options.colorBits) * 3, j = 10; i < colorCount; i++, j++ ) {
+        for( var i = 0, paletteSize = (1 << options.colorBits) * 3, j = 10; i < paletteSize; i++, j++ ) {
             imageBlock[j] = options.palette[i];
         }
     }
@@ -132,7 +132,9 @@ var compressImageData = function( options ) {
     var codeTableIndex;
     var codeTable = {};
 
-    var clearCode = 1 << options.LZWMinCodeSize;
+    var LZWMinCodeSize = options.LZWMinCodeSize === 1 ? 2 : options.LZWMinCodeSize;
+
+    var clearCode = 1 << LZWMinCodeSize;
     var endOfInformationCode = clearCode + 1;
 
     // palette to dict
@@ -151,12 +153,11 @@ var compressImageData = function( options ) {
 
     var bitsShifter = 0;
     var bitsCount = 0;
-    var bitsThreshold = options.LZWMinCodeSize + 1;
+    var bitsThreshold = LZWMinCodeSize + 1;
     var curMaxCode = (1 << bitsThreshold) - 1;
 
-    // if options.isUncompressed is setup then we need more room
-    var codeStream = new Uint8Array( options.width * options.height * (options.isUncompressed ? 2 : 1) );
-    codeStream[0] = options.LZWMinCodeSize; // before anything save the LZWMinCodeSize!!!
+    var codeStream = new Uint8Array( options.width * options.height * 3 );
+    codeStream[0] = LZWMinCodeSize; // before anything save the LZWMinCodeSize!!!
     // you start at 2, because you need to make room for the first byte count byte
     var codeStreamIndex = 2;
     var byteCount = 0;
@@ -254,14 +255,14 @@ var compressImageData = function( options ) {
 
         if( wasClearCode ) {
             // reset table
-            codeTableIndex = 1 << options.LZWMinCodeSize;
+            codeTableIndex = 1 << LZWMinCodeSize;
             codeTable = {};
             for( var i = 0; i < codeTableIndex; i++ ) {
                 codeTable[i] = i;
             }
             codeTableIndex += 2;
             // reset theses also
-            bitsThreshold = options.LZWMinCodeSize + 1;
+            bitsThreshold = LZWMinCodeSize + 1;
             curMaxCode = (1 << bitsThreshold) - 1;
 
             wasClearCode = false;
@@ -304,8 +305,7 @@ var compressImageData = function( options ) {
                     wasClearCode = true;
                     //DEBUG && console.log( 'resseting bitsThreshold' );
                 } else {
-                    bitsThreshold++;
-                    curMaxCode = (1 << bitsThreshold) - 1;
+                    curMaxCode = (1 << ++bitsThreshold) - 1;
                     //DEBUG && console.log( 'increment bitsThreshold to', bitsThreshold );
                 }
             }

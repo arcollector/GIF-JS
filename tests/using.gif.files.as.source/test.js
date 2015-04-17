@@ -5,12 +5,10 @@
 // in firefox you need to setup the option fileuri.strict_origin_policy to false
 // in chrome you need to enable the flag access-files-from-file
 
-var libPath = '../';
-
 GIF.init( {
 	canvasSelector: '.picture',
-	libPath: '../', // relative from the ubication of this file
-	imagesPath: 'test/', // relative from the ubication of gif.decoder.js file
+	libPath: '../../', // relative from the ubication of this file
+	imagesPath: 'tests/using.gif.files.as.source', // relative from the ubication of gif.decoder.js file
 } );
 
 var filenameURL = 'interlace.gif'; // LZWMinCodeSize = 2 && isInterlaced
@@ -27,6 +25,7 @@ GIF.decode( filenameURL, function( imagesBlock ) {
 	if( !imagesBlock ) {
 		return;
 	}
+
 	GIF.display( imagesBlock );
 
 	// *************************************
@@ -56,7 +55,7 @@ GIF.decode( filenameURL, function( imagesBlock ) {
 		};
 		bitmaps.push( bitmapData );
 	}
-
+	//return;
 	GIF.encode( {
 		// setup the general options
 		canvasWidth: imagesBlock[0].canvasWidth,
@@ -66,6 +65,6 @@ GIF.decode( filenameURL, function( imagesBlock ) {
 		palette: imagesBlock[0].palette, // also know as the global palette, optional if each image block has it own local palette
 		bitmaps: bitmaps,
 	}, function( file ) {
-		GIF.download( file );
+		file && GIF.download( file );
 	} );
 } );
