@@ -186,5 +186,4 @@ var Tests = {
 		} );
 		console.log( 'TEST INIT: press <return> key to trigger first test case' );
 	},
-
 };

@@ -327,20 +327,28 @@ var compressImageData = function( options ) {
 var createFile = function( options ) {
 
     if( options.canvasWidth > 0xFFFF || options.canvasHeight > 0xFFFF || options.canvasWidth < 0 || options.canvasHeight < 0 ) {
-        console.error( 'canvas image rect too large, maximum dimensions are', 0xFFFF );
+        console.error( 'canvas image rect too large, maximum dimension is', 0xFFFF );
         return null;
     }
 
-    var globalPalette = options.palette || null;
-    if( globalPalette && ( globalPalette.length === 0 || globalPalette.length > 768 ) ) {
-        console.error( 'global palette length is erroneous' );
+    var globalColorBits = options.colorBits || 0;
+    if( globalColorBits && ( globalColorBits < 1 || globalColorBits > 8 ) ) {
+        console.error( 'colorBits bad value:', globalColorBits );
         return null;
+    }
+    var globalPalette = options.palette || null;
+    if( globalPalette ) {
+        var paletteSize = ( 1 << globalColorBits ) * 3;
+        if( globalPalette.length < paletteSize ) {
+            console.error( 'global palette length is erroneous' );
+            return null;
+        }
     }
 
     var header = createHeader( {
         canvasWidth: options.canvasWidth,
         canvasHeight: options.canvasHeight,
-        colorBits: options.colorBits,
+        colorBits: globalColorBits,
         palette: globalPalette,
         backgroundColorIndex: options.backgroundColorIndex || 0,
     } );
@@ -358,20 +366,23 @@ var createFile = function( options ) {
     for( var i = 0, l = bitmaps.length; i < l; i++ ) {
         var bitmap = bitmaps[i];
 
-        var colorBits = bitmap.colorBits || options.colorBits || 0;
-        if( colorBits < 1 || colorBits > 8 ) {
-            console.error( 'bad colorBits value' );
+        var localColorBits = bitmap.colorBits || 0;
+        if( localColorBits && ( localColorBits < 1 || localColorBits > 8 ) ) {
+            console.error( 'colorBits bad value:', localColorBits, 'at image num', i );
             return null;
         }
 
         var localPalette = bitmap.palette || null;
-        if( !localPalette && !globalPalette ) { // we need one palette!!
+        if( !localPalette && !globalPalette ) { // we need a palette!!
             console.error( 'missing a palette at image num', i );
             return null;
         }
-        if( localPalette && ( localPalette.length === 0 || localPalette.length > 768 ) ) {
-            console.error( 'local palette length is erroneous at image num', i );
-            return null;
+        if( localPalette ) {
+            var paletteSize = ( 1 << localColorBits ) * 3;
+            if( localPalette.length < paletteSize ) {
+                console.error( 'local palette length is erroneous at image num', i );
+                return null;
+            }
         }
 
         if( bitmap.width > options.canvasWidth || bitmap.height > options.canvasHeight || bitmap.width < 0 || bitmap.height < 0 ) {
@@ -405,7 +416,7 @@ var createFile = function( options ) {
             width: bitmap.width,
             height: bitmap.height,
             palette: localPalette || null,
-            colorBits: localPalette ? colorBits : 0,
+            colorBits: localPalette ? localColorBits : 0,
             isInterlaced: isInterlaced
         } );
 
@@ -418,7 +429,7 @@ var createFile = function( options ) {
             height: bitmap.height,
             canvasWidth: options.canvasWidth,
             canvasHeight: options.canvasHeight,
-            LZWMinCodeSize: colorBits,
+            LZWMinCodeSize: localPalette ? localColorBits : globalColorBits,
             isInterlaced: isInterlaced,
             isUncompressed: bitmap.isUncompressed || false,
         } );

@@ -89,7 +89,7 @@ var GIF = {
 	},
 
 // **********
-// REMAPPING COLOR PALETTES
+// COLOR CONVERSION FUNCTIONS
 // **********
 	_remapImageBlockPalette: function( imageBlock ) {
 		var palette = imageBlock.palette;
@@ -107,7 +107,7 @@ var GIF = {
 			var colorDictIndex = r + ',' + g + ',' + b;
 			if( !(colorDictIndex in colorsDict) ) {
 				if( newPaletteIndex === paletteSize ) {
-					console.error( 'target image has more than', colorCount,'posible colors' );
+					console.error( 'target image has more than', colorCount, 'posible colors' );
 					return false;
 				}
 				newPalette[newPaletteIndex++] = r;
@@ -116,7 +116,7 @@ var GIF = {
 				colorsDict[colorDictIndex] = true;
 			}
 		}
-		imageBlock.palette = newPalette.subarray( 0, newPaletteIndex );
+		imageBlock.palette = newPalette;
 		return true;
 	},
 	toGrayScale: function( imageBlock, notRemapPalette ) {
@@ -151,13 +151,13 @@ var GIF = {
 		if( !colorRange ) {
 			return false;
 		}
-		ditherFunct = typeof ditherFunct !== 'function' ? this._toMonochrome : ditherFunct;
+		ditherFunct = typeof ditherFunct !== 'function' ? this._toMonochrome.bind( this ) : ditherFunct;
 		return ditherFunct( imageBlock, colorRange );
 	},
 	_toMonochrome: function( imageBlock, colorRange ) {
 		var black = colorRange[0];
 		var white = colorRange[1];
-		var grayMidpoint = (white - black) / 2;
+		var grayMidpoint = (white + black) / 2;
 		var width = imageBlock.canvasWidth;
 		var height = imageBlock.canvasHeight;
 		var imageData = imageBlock.imageData;
@@ -169,7 +169,7 @@ var GIF = {
 			imageData[i++] = whiteOrBlack;
 			i++;
 		}
-		if( !GIF._remapImageBlockPalette( imageBlock ) ) {
+		if( !this._remapImageBlockPalette( imageBlock ) ) {
 			return false;
 		}
 		imageBlock.colorBits = 1;
@@ -345,7 +345,6 @@ GIF.Dither = {
 		imageBlock.colorBits = 1;
 		return true;
 	},
-
 };
 
 GIF._Dither = function( imageBlock, colorRange, ditherData ) {
@@ -356,7 +355,7 @@ GIF._Dither = function( imageBlock, colorRange, ditherData ) {
 	this.height = imageBlock.canvasHeight;
 	this.black = colorRange[0];
 	this.white = colorRange[1];
-	this.grayMidpoint = ( this.white - this.black ) / 2;
+	this.grayMidpoint = ( this.white + this.black ) / 2;
 	this.ditheredImageData = new Uint8Array( this.width * this.height * 4 );
 	this.ditherTable = ditherData.table;
 	this.ditherTableRows = ditherData.rows;
@@ -372,7 +371,6 @@ GIF._Dither.prototype = {
 		var imageDataIndex = (y*this.width*4 + x*4) % (this.imageDataLengh);
 		return this.imageData[imageDataIndex];
 	},
-
 	setPixel: function( x, y, color ) {
 		if( x > this.width || y > this.height || x < 0 || y < 0 ) {
 			return;
@@ -389,7 +387,6 @@ GIF._Dither.prototype = {
 		this.imageData[imageDataIndex++] = color;
 		this.imageData[imageDataIndex++] = color;
 	},
-
 	setDiffusionError: function( x, y, error ) {
 		for( var row = 0; row < this.ditherTableRows; row++ ) {
 			for( var col = 0; col < this.ditherTableCols; col++ ) {
@@ -407,7 +404,6 @@ GIF._Dither.prototype = {
 			}
 		}
 	},
-
 	dither: function() {
 		var i = 0;
 		for( var y = 0; y < this.height; y++ ) {
