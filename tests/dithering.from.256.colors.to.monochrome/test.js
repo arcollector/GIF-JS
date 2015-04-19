@@ -18,10 +18,10 @@ GIF.decode( filenameURL, function( imagesBlock ) {
 		return;
 	}
 
-	Tests.init( imagesBlock[0] ); // use the first image as test bed
+	Test.init( imagesBlock[0] ); // use the first image as test bed
 } );
 
-var Tests = {
+var Test = {
 	imageBlock: null,
 	imageDataCopy: null,
 	imageDataLength: 0,
@@ -29,157 +29,239 @@ var Tests = {
 	isRunning: false,
 
 	restoreImageData: function( imageData ) {
-		for( var i = 0; i < Tests.imageDataLength; i++ ) {
-			imageData[i] = Tests.imageDataCopy[i];
+		for( var i = 0; i < Test.imageDataLength; i++ ) {
+			imageData[i] = Test.imageDataCopy[i];
 		}
 	},
 
-	encodeDownloadNext: function( imageBlock ) {
-		GIF.encode( {
-			canvasWidth: imageBlock.canvasWidth,
-			canvasHeight: imageBlock.canvasHeight,
-			backgroundColorIndex: imageBlock.backgroundColorIndex,
-			colorBits: imageBlock.colorBits,
-			palette: imageBlock.palette,
-			bitmaps: [ {
-				isInterlaced: imageBlock.isInterlaced, // (optional)
-				top: imageBlock.top, // (optional, 0 default)
-				left: imageBlock.left, // (optional, 0 default)
-				width: imageBlock.width,
-				height: imageBlock.height,
-				imageData: imageBlock.imageData,
-				isUncompressed: false,
-			} ],
-		}, function( file ) {
-			file && GIF.download( file );
-			Tests.isRunning = false;
-			Tests.curCase !== Tests.cases.length && console.log( 'TEST NEXT: press <return> key to trigger next case' );
-		} );
+	start: function() {
+		var imageBlock = Test.imageBlock;
+		Test.restoreImageData( imageBlock.imageData );
+		return imageBlock;
+	},
+
+	dither: function( imageBlock, type, callback ) {
+		GIF.dither( imageBlock, type, callback );
+	},
+
+	display: function( imageBlock ) {
+		GIF.display( imageBlock );
+	},
+
+	encode: function( imageBlock, callback ) {
+		GIF.encode(
+			{
+				canvasWidth: imageBlock.canvasWidth,
+				canvasHeight: imageBlock.canvasHeight,
+				backgroundColorIndex: imageBlock.backgroundColorIndex,
+				colorBits: imageBlock.colorBits,
+				palette: imageBlock.palette,
+				bitmaps: [ {
+					isInterlaced: imageBlock.isInterlaced, // (optional)
+					top: imageBlock.top, // (optional, 0 default)
+					left: imageBlock.left, // (optional, 0 default)
+					width: imageBlock.width,
+					height: imageBlock.height,
+					imageData: imageBlock.imageData,
+					isUncompressed: false,
+				} ],
+			},
+			callback
+		);
+	},
+
+	download: function( file ) {
+		GIF.download( file );
+		Test.isRunning = false;
+		Test.curCase !== Test.cases.length && console.log( 'TEST NEXT: press <return> key to trigger next case' );
 	},
 
 	cases: [
 		function() { // gray scale test
 			console.log( 'TEST #: gray scale test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toGrayScale( imageBlock ) ) {
-				console.error( 'gray scale test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.GRAY_SCALE, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 		function() { // monochrome test
 			console.log( 'TEST #: monochrome test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toMonochrome( imageBlock ) ) {
-				console.error( 'monochrome test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 		function() { // bayer dithering test
 			console.log( 'TEST #: bayer dithering test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toMonochrome( imageBlock, GIF.Dither.Bayer ) ) {
-				console.error( 'bayer dithering test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_BAYER, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 		function() { // floyd dithering test
 			console.log( 'TEST #: floyd dithering test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toMonochrome( imageBlock, GIF.Dither.Floyd ) ) {
-				console.error( 'bayer dithering test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_FLOYD, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 		function() { // stucki dithering test
 			console.log( 'TEST #: stucki dithering test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toMonochrome( imageBlock, GIF.Dither.Stucki ) ) {
-				console.error( 'stucki dithering test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_STUCKI, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 		function() { // burkes dithering test
 			console.log( 'TEST #: burkes dithering test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toMonochrome( imageBlock, GIF.Dither.Burkes ) ) {
-				console.error( 'burkes dithering test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_BURKES, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 		function() { // sierra dithering test
 			console.log( 'TEST #: sierra dithering test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toMonochrome( imageBlock, GIF.Dither.Sierra ) ) {
-				console.error( 'sierra dithering test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_SIERRA, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 		function() { // jarvis, judice & ninke dithering test
 			console.log( 'TEST #: jarvis, judice & ninke dithering test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toMonochrome( imageBlock, GIF.Dither.JarvisJudiceNinke ) ) {
-				console.error( 'jarvis, judice & ninke dithering test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_JARVIS_JUDICE_NINKE, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 		function() { // stevenson & arce dithering test
 			console.log( 'TEST #: stevenson & arce dithering test' );
-			var imageBlock = Tests.imageBlock;
-			Tests.restoreImageData( imageBlock.imageData );
-			if( !GIF.toMonochrome( imageBlock, GIF.Dither.StevensonArce ) ) {
-				console.error( 'stevenson & arce dithering test has failed' );
-				return;
-			}
-			GIF.display( [ imageBlock ] );
-			Tests.encodeDownloadNext( imageBlock );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_STEVENSON_ARCE, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
 		},
 	],
 
 	init: function( imageBlock ) {
-		Tests.curCase = 0;
-		Tests.imageBlock = imageBlock; // save a reference
+		Test.curCase = 0;
+		Test.imageBlock = imageBlock; // save a reference
 		// make a copy of the image data to be used in the successive test
 		var imageData = imageBlock.imageData;
-		Tests.imageDataLength = imageData.length;
-		Tests.imageDataCopy = new Uint8Array( Tests.imageDataLength );
-		for( var i = 0; i < Tests.imageDataLength; i++ ) {
-			Tests.imageDataCopy[i] = imageData[i];
+		Test.imageDataLength = imageData.length;
+		Test.imageDataCopy = new Uint8Array( Test.imageDataLength );
+		for( var i = 0; i < Test.imageDataLength; i++ ) {
+			Test.imageDataCopy[i] = imageData[i];
 		}
 		window.addEventListener( 'keyup', function( e ) {
 			if( e.keyCode !== 13 ) {
 				return;
 			}
-			if( Tests.isRunning ) {
+			if( Test.isRunning ) {
 				console.warn( 'a test is currently running, please wait...' );
 				return;
 			}
-			Tests.isRunning = true;
-			Tests.cases[Tests.curCase]();
-			if( ++Tests.curCase === Tests.cases.length ) {
+			Test.isRunning = true;
+			Test.cases[Test.curCase]();
+			if( ++Test.curCase === Test.cases.length ) {
 				console.log( 'TEST END' );
 				window.removeEventListener( 'keyup' );
 			}
