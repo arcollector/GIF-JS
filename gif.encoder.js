@@ -326,7 +326,7 @@ var compressImageData = function( options ) {
 
 var createFile = function( options ) {
 
-    if( options.canvasWidth > 0xFFFF || options.canvasHeight > 0xFFFF || options.canvasWidth < 0 || options.canvasHeight < 0 ) {
+    if( options.canvasWidth > 0xFFFF || options.canvasHeight > 0xFFFF || options.canvasWidth <= 0 || options.canvasHeight <= 0 ) {
         console.error( 'canvas image rect too large, maximum dimension is', 0xFFFF );
         return null;
     }
@@ -389,6 +389,12 @@ var createFile = function( options ) {
             console.error( 'image dimensions are larger than the canvas dimensions' );
             return null;
         }
+        bitmap.width = bitmap.width || 0;
+        bitmap.height = bitmap.height || 0;
+        if( bitmap.width <= 0 || bitmap.height <= 0 || bitmap.width > options.canvasWidth || bitmap.height > options.canvasHeight ) {
+            console.error( 'bad image num', i, 'dimensions' );
+            return null;
+        }
         bitmap.left = bitmap.left || 0;
         bitmap.top = bitmap.top || 0;
         if( bitmap.left + bitmap.width > options.canvasWidth || bitmap.top + bitmap.height > options.canvasHeight || bitmap.left < 0 || bitmap.top < 0 ) {
@@ -416,7 +422,7 @@ var createFile = function( options ) {
             width: bitmap.width,
             height: bitmap.height,
             palette: localPalette || null,
-            colorBits: localPalette ? localColorBits : 0,
+            colorBits: localPalette ? localColorBits : globalColorBits,
             isInterlaced: isInterlaced
         } );
 
