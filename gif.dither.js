@@ -2,8 +2,7 @@
 * UTILS
 */
 
-var remapPalette = function( imageBlock ) {
-	var palette = imageBlock.palette;
+var recalcPalette = function( imageBlock ) {
 	var imageData = imageBlock.imageData;
 	var colorCount = 1 << imageBlock.colorBits;
 	var paletteSize = colorCount*3;
@@ -37,9 +36,13 @@ Dither = function( imageBlock, colorRange, ditherData ) {
 	this.imageDataLengh = imageBlock.imageData.length;
 	this.width = imageBlock.canvasWidth;
 	this.height = imageBlock.canvasHeight;
-	this.black = colorRange[0];
-	this.white = colorRange[1];
-	this.grayMidpoint = ( this.white + this.black ) / 2;
+	if( colorRange ) {
+		this.black = colorRange[0];
+		this.white = colorRange[1];
+		this.grayMidpoint = ( this.white + this.black ) / 2;
+	} else {
+		this.black = this.white = this.grayMidpoint = 0;
+	}
 	this.ditheredImageData = new Uint8Array( this.width * this.height * 4 );
 	this.ditherTable = ditherData.table;
 	this.ditherTableRows = ditherData.rows;
@@ -51,11 +54,13 @@ Dither = function( imageBlock, colorRange, ditherData ) {
 	}
 };
 Dither.prototype = {
-	getPixel: function( x, y ) {
+
+	getPixelMonochrome: function( x, y ) {
 		var imageDataIndex = (y*this.width*4 + x*4) % (this.imageDataLengh);
 		return this.imageData[imageDataIndex];
 	},
-	setPixel: function( x, y, color ) {
+
+	setPixelMonochrome: function( x, y, color ) {
 		if( x > this.width || y > this.height || x < 0 || y < 0 ) {
 			return;
 		}
@@ -67,28 +72,30 @@ Dither.prototype = {
 		}
 		color = parseInt( color );
 		var imageDataIndex = y*this.width*4 + x*4;
-		this.imageData[imageDataIndex++] = color;
-		this.imageData[imageDataIndex++] = color;
-		this.imageData[imageDataIndex++] = color;
+		this.imageData[imageDataIndex] = color;
+		this.imageData[imageDataIndex+1] = color;
+		this.imageData[imageDataIndex+2] = color;
 	},
-	setDiffusionError: function( x, y, error ) {
+
+	setDiffusionErrorMonochrome: function( x, y, error ) {
 		for( var row = 0; row < this.ditherTableRows; row++ ) {
 			for( var col = 0; col < this.ditherTableCols; col++ ) {
-				var tableValue = this.ditherTable[row * this.ditherTableCols + col];
-				if( !tableValue ) {
+				var val = this.ditherTable[row*this.ditherTableCols + col];
+				if( !val ) {
 					continue;
 				}
-				var x1 = x + ( col - this.ditherTablePivot );
+				var x1 = x + (col - this.ditherTablePivot);
 				var y1 = y + row;
 				if( x1 < 0 || y1 < 0 || x1 > this.width || y1 > this.height ) {
 					continue;
 				}
-				var pixelDithered = this.getPixel( x1, y1 ) + ( error * tableValue ) / this.ditherTableTotal;
-				this.setPixel( x1, y1, pixelDithered );
+				var pixelDithered = this.getPixelMonochrome( x1, y1 ) + (error*val)/this.ditherTableTotal;
+				this.setPixelMonochrome( x1, y1, pixelDithered );
 			}
 		}
 	},
-	dither: function() {
+
+	ditherMonochrome: function() {
 		var i = 0;
 		for( var y = 0; y < this.height; y++ ) {
 			for( var x = 0; x < this.width; x++ ) {
@@ -106,7 +113,102 @@ Dither.prototype = {
 				this.ditheredImageData[i++] = whiteOrBlack;
 				this.ditheredImageData[i++] = whiteOrBlack;
 				this.ditheredImageData[i++] = 255;
-				this.setDiffusionError( x, y, error );
+				this.setDiffusionErrorMonochrome( x, y, error );
+			}
+		}
+		this.imageBlock.imageData = this.ditheredImageData;
+	},
+
+	// *******************************************************
+	// *******************************************************
+
+	getPixelRGB: function( x, y ) {
+		var imageDataIndex = (y*this.width*4 + x*4) % (this.imageDataLengh);
+		return new Uint8Array( [
+			this.imageData[imageDataIndex],
+			this.imageData[imageDataIndex+1],
+			this.imageData[imageDataIndex+2],
+		] );
+	},
+
+	setPixelRGB: function( x, y, rgb ) {
+		if( x > this.width || y > this.height || x < 0 || y < 0 ) {
+			return;
+		}
+		var r = rgb[0];
+		var g = rgb[1];
+		var b = rgb[2];
+		r = parseInt( Math.min( 255, Math.max( r, 0 ) ) );
+		g = parseInt( Math.min( 255, Math.max( g, 0 ) ) );
+		b = parseInt( Math.min( 255, Math.max( b, 0 ) ) );
+		var imageDataIndex = y*this.width*4 + x*4;
+		this.imageData[imageDataIndex] = r;
+		this.imageData[imageDataIndex+1] = g;
+		this.imageData[imageDataIndex+2] = b;
+	},
+
+	setDiffusionErrorRGB: function( x, y, r, g, b, mr, mg, mb ) {
+		var dr = r - mr;
+		var dg = g - mg;
+		var db = b - mb;
+
+		for( var row = 0; row < this.ditherTableRows; row++ ) {
+			for( var col = 0; col < this.ditherTableCols; col++ ) {
+				var val = this.ditherTable[row*this.ditherTableCols + col];
+				if( !val ) {
+					continue;
+				}
+				var x1 = x + (col - this.ditherTablePivot);
+				var y1 = y + row;
+				if( x1 < 0 || y1 < 0 || x1 > this.width || y1 > this.height ) {
+					continue;
+				}
+				var rgb = this.getPixelRGB( x1, y1 );
+				rgb[0] += (dr*val)/this.ditherTableTotal;
+				rgb[1] += (dg*val)/this.ditherTableTotal;
+				rgb[2] += (db*val)/this.ditherTableTotal;
+				this.setPixelRGB( x1, y1, rgb );
+			}
+		}
+	},
+
+	ditherRGB: function() {
+		var min = new Uint8Array( [ 255, 255, 255 ] );
+		var max = new Uint8Array( [ 0, 0, 0 ] );
+
+		for( var i = 0; i < this.imageDataLengh; ) {
+			var r = this.imageData[i++];
+			var g = this.imageData[i++];
+			var b = this.imageData[i++];
+			i++;
+			min[0] = Math.min( min[0], r );
+			min[1] = Math.min( min[1], g );
+			min[2] = Math.min( min[2], b );
+			max[0] = Math.max( max[0], r );
+			max[1] = Math.max( max[1], g );
+			max[2] = Math.max( max[2], b );
+		}
+
+		var mid = new Uint8Array( [
+			(max[0] + min[0]) / 2,
+			(max[1] + min[1]) / 2,
+			(max[2] + min[2]) / 2,
+		] );
+
+		var i = 0;
+		for( var y = 0; y < this.height; y++ ) {
+			for( var x = 0; x < this.width; x++ ) {
+				var r = this.imageData[i];
+				var g = this.imageData[i+1];
+				var b = this.imageData[i+2];
+				var mr = r > mid[0] ? 255 : 0;
+				var mg = g > mid[1] ? 255 : 0;
+				var mb = b > mid[2] ? 255 : 0;
+				this.ditheredImageData[i++] = mr;
+				this.ditheredImageData[i++] = mg;
+				this.ditheredImageData[i++] = mb;
+				this.ditheredImageData[i++] = 255;
+				this.setDiffusionErrorRGB( x, y, r, g, b, mr, mg, mb );
 			}
 		}
 		this.imageBlock.imageData = this.ditheredImageData;
@@ -120,7 +222,7 @@ Dither.prototype = {
 * GRAY SCALE TRANSFORMATION
 */
 
-var toGrayScale = function( imageBlock, notRemapPalette ) {
+var toGrayScale = function( imageBlock, notRecalcPalette ) {
 	var imageData = imageBlock.imageData;
 	var width = imageBlock.canvasWidth;
 	var height = imageBlock.canvasHeight;
@@ -142,7 +244,8 @@ var toGrayScale = function( imageBlock, notRemapPalette ) {
 			i++;
 		}
 	}
-	if( !notRemapPalette && !remapPalette( imageBlock ) ) {
+	imageBlock.colorBits = 8;
+	if( !notRecalcPalette && !recalcPalette( imageBlock ) ) {
 		return null;
 	}
 	return new Uint8Array( [ black, white ] );
@@ -171,17 +274,17 @@ var toMonochrome = function( imageBlock, colorRange ) {
 		i++;
 	}
 	imageBlock.colorBits = 1;
-	if( !remapPalette( imageBlock ) ) {
+	if( !recalcPalette( imageBlock ) ) {
 		return false;
 	}
 	return true;
 };
 
 var toMonochromeUsingFilter = function( imageBlock, colorRange, filter ) {
-	new Dither( imageBlock, colorRange, filter ).dither();
+	new Dither( imageBlock, colorRange, filter ).ditherMonochrome();
 
 	imageBlock.colorBits = 1;
-	if( !remapPalette( imageBlock ) ) {
+	if( !recalcPalette( imageBlock ) ) {
 		return false;
 	}
 	return true;
@@ -221,7 +324,7 @@ var toMonochromeBayer = function( imageBlock ) {
 		}
 	}
 	imageBlock.colorBits = 1;
-	if( !remapPalette( imageBlock ) ) {
+	if( !recalcPalette( imageBlock ) ) {
 		return false;
 	}
 	return true;
@@ -336,9 +439,15 @@ var StevensonArceTable = {
 // *******************************************************
 // *******************************************************
 
-/**
-* MAIN
-*/
+var to8ColorsUsingFilter = function( imageBlock, filter ) {
+	new Dither( imageBlock, null, filter ).ditherRGB();
+
+	imageBlock.colorBits = 3;
+	return recalcPalette( imageBlock );
+};
+
+// *******************************************************
+// *******************************************************
 
 const MONOCHROME = 0x01;
 const MONOCHROME_BAYER = 0x02;
@@ -351,6 +460,13 @@ const MONOCHROME_STEVENSON_ARCE = 0x08;
 
 const GRAY_SCALE = 0x10;
 
+const _8_COLORS_FLOYD = 0x0100;
+const _8_COLORS_STUCKI = 0x0200;
+const _8_COLORS_BURKES = 0x0300;
+const _8_COLORS_SIERRA = 0x0400;
+const _8_COLORS_JARVIS_JUDICE_NINKE = 0x0500;
+const _8_COLORS_STEVENSON_ARCE = 0x0600;
+
 var filterTables = {};
 filterTables[MONOCHROME_FLOYD] = FloydTable;
 filterTables[MONOCHROME_STUCKI] = StuckiTable;
@@ -358,6 +474,20 @@ filterTables[MONOCHROME_BURKES] = BurkesTable;
 filterTables[MONOCHROME_SIERRA] = SierraTable;
 filterTables[MONOCHROME_JARVIS_JUDICE_NINKE] = JarvisJudiceNinkeTable;
 filterTables[MONOCHROME_STEVENSON_ARCE] = StevensonArceTable;
+
+filterTables[_8_COLORS_FLOYD] = FloydTable;
+filterTables[_8_COLORS_STUCKI] = StuckiTable;
+filterTables[_8_COLORS_BURKES] = BurkesTable;
+filterTables[_8_COLORS_SIERRA] = SierraTable;
+filterTables[_8_COLORS_JARVIS_JUDICE_NINKE] = JarvisJudiceNinkeTable;
+filterTables[_8_COLORS_STEVENSON_ARCE] = StevensonArceTable;
+
+// *******************************************************
+// *******************************************************
+
+/**
+* MAIN
+*/
 
 var DEBUG = true;
 
@@ -388,11 +518,23 @@ self.addEventListener( 'message', function( e ) {
 		}
 
 		case GRAY_SCALE: {
-			ret = toGrayScale( imageBlock, false );
+			var colorRange = toGrayScale( imageBlock, false );
+			ret = !colorRange ? false : true;
+			break;
+		}
+
+		case _8_COLORS_FLOYD:
+		case _8_COLORS_STUCKI:
+		case _8_COLORS_BURKES:
+		case _8_COLORS_SIERRA:
+		case _8_COLORS_JARVIS_JUDICE_NINKE:
+		case _8_COLORS_STEVENSON_ARCE: {
+			ret = to8ColorsUsingFilter( imageBlock, filterTables[args.type] );
 			break;
 		}
 
         default: {
+			ret = false;
             break;
         }
     }
