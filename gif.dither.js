@@ -44,17 +44,20 @@ var initDither = function( instance, imageBlock, colorRange, ditherData ) {
 		instance.black = colorRange[0];
 		instance.white = colorRange[1];
 		instance.grayMidpoint = ( instance.white + instance.black ) / 2;
-	} else {
-		instance.black = instance.white = instance.grayMidpoint = 0;
 	}
 	instance.ditheredImageData = new Uint8Array( instance.width * instance.height * 4 );
-	instance.ditherTable = ditherData.table;
-	instance.ditherTableRows = ditherData.rows;
-	instance.ditherTableCols = ditherData.cols;
-	instance.ditherTablePivot = parseInt( ditherData.cols / 2 );
-	instance.ditherTableTotal = 0;
-	for( var i = 0, l = ditherData.rows*ditherData.cols; i < l; i++ ) {
-		instance.ditherTableTotal += ditherData.table[i];
+	if( ditherData ) {
+		instance.filter = true;
+		instance.ditherTable = ditherData.table;
+		instance.ditherTableRows = ditherData.rows;
+		instance.ditherTableCols = ditherData.cols;
+		instance.ditherTablePivot = parseInt( ditherData.cols / 2 );
+		instance.ditherTableTotal = 0;
+		for( var i = 0, l = ditherData.rows*ditherData.cols; i < l; i++ ) {
+			instance.ditherTableTotal += ditherData.table[i];
+		}
+	} else {
+		instance.filter = false;
 	}
 };
 
@@ -121,7 +124,7 @@ DitherMonochrome.prototype = {
 				this.ditheredImageData[i++] = whiteOrBlack;
 				this.ditheredImageData[i++] = whiteOrBlack;
 				this.ditheredImageData[i++] = 255;
-				this.setDiffusionError( x, y, error );
+				this.filter && this.setDiffusionError( x, y, error );
 			}
 		}
 		this.imageBlock.imageData = this.ditheredImageData;
@@ -261,7 +264,7 @@ DitherColor.prototype = {
 				this.ditheredImageData[i++] = mg;
 				this.ditheredImageData[i++] = mb;
 				this.ditheredImageData[i++] = 255;
-				this.setDiffusionError( x, y, r, g, b, mr, mg, mb );
+				this.filter && this.setDiffusionError( x, y, r, g, b, mr, mg, mb );
 			}
 		}
 		this.imageBlock.imageData = this.ditheredImageData;
@@ -314,26 +317,7 @@ var toGrayScale = function( imageBlock, notRecalcPalette ) {
 * MONOCHROME TRANSFORMATION
 */
 
-var toMonochrome = function( imageBlock, colorRange ) {
-	var black = colorRange[0];
-	var white = colorRange[1];
-	var grayMidpoint = (white + black) / 2;
-	var width = imageBlock.canvasWidth;
-	var height = imageBlock.canvasHeight;
-	var imageData = imageBlock.imageData;
-	for( var i = 0; i < imageData.length; ) {
-		var gray = imageData[i];
-		var whiteOrBlack = gray >= grayMidpoint ? 255 : 0;
-		imageData[i++] = whiteOrBlack;
-		imageData[i++] = whiteOrBlack;
-		imageData[i++] = whiteOrBlack;
-		i++;
-	}
-	imageBlock.colorBits = 1;
-	return recalcPalette( imageBlock );
-};
-
-var toMonochromeUsingFilter = function( imageBlock, colorRange, filter ) {
+var toMonochrome = function( imageBlock, colorRange, filter ) {
 	return new DitherMonochrome( imageBlock, colorRange, filter ).dither();
 };
 
@@ -468,7 +452,7 @@ const COLOR_SCALING = Math.pow(2, BITS_PER_PRIM_COLOR);
 const COLOR_SCALING_INVERSE = 1 / COLOR_SCALING;
 const PALETTE_LENGTH = 256;
 
-var to256ColorsUsingFilter = function( imageBlock, filter ) {
+var to256Colors = function( imageBlock, filter ) {
 
 	var imageData = imageBlock.imageData;
 	var imageDataLengh = imageData.length;
@@ -625,9 +609,9 @@ var to256ColorsUsingFilter = function( imageBlock, filter ) {
 			rgbAvg[1] += rgb[1];
 			rgbAvg[2] += rgb[2];
 		}
-		palette[paletteIndex++] = (rgbAvg[0] * COLOR_SCALING) / numEntries;
-		palette[paletteIndex++] = (rgbAvg[1] * COLOR_SCALING) / numEntries;
-		palette[paletteIndex++] = (rgbAvg[2] * COLOR_SCALING) / numEntries;
+		palette[paletteIndex++] = parseInt( (rgbAvg[0] * COLOR_SCALING) / numEntries );
+		palette[paletteIndex++] = parseInt( (rgbAvg[1] * COLOR_SCALING) / numEntries );
+		palette[paletteIndex++] = parseInt( (rgbAvg[2] * COLOR_SCALING) / numEntries );
 	}
 	// NOTE: paletteIndex may be not equal to 256*3
 
@@ -648,14 +632,16 @@ const MONOCHROME_STEVENSON_ARCE = 0x08;
 
 const GRAY_SCALE = 0x10;
 
-const _256_COLORS_FLOYD = 0x0100;
-const _256_COLORS_STUCKI = 0x0200;
-const _256_COLORS_BURKES = 0x0300;
-const _256_COLORS_SIERRA = 0x0400;
-const _256_COLORS_JARVIS_JUDICE_NINKE = 0x0500;
-const _256_COLORS_STEVENSON_ARCE = 0x0600;
+const _256_COLORS = 0x0100;
+const _256_COLORS_FLOYD = 0x0200;
+const _256_COLORS_STUCKI = 0x0300;
+const _256_COLORS_BURKES = 0x0400;
+const _256_COLORS_SIERRA = 0x0500;
+const _256_COLORS_JARVIS_JUDICE_NINKE = 0x0600;
+const _256_COLORS_STEVENSON_ARCE = 0x0700;
 
 var filterTables = {};
+filterTables[MONOCHROME] = null;
 filterTables[MONOCHROME_FLOYD] = FloydTable;
 filterTables[MONOCHROME_STUCKI] = StuckiTable;
 filterTables[MONOCHROME_BURKES] = BurkesTable;
@@ -663,6 +649,7 @@ filterTables[MONOCHROME_SIERRA] = SierraTable;
 filterTables[MONOCHROME_JARVIS_JUDICE_NINKE] = JarvisJudiceNinkeTable;
 filterTables[MONOCHROME_STEVENSON_ARCE] = StevensonArceTable;
 
+filterTables[_256_COLORS] = null;
 filterTables[_256_COLORS_FLOYD] = FloydTable;
 filterTables[_256_COLORS_STUCKI] = StuckiTable;
 filterTables[_256_COLORS_BURKES] = BurkesTable;
@@ -684,16 +671,7 @@ self.addEventListener( 'message', function( e ) {
 	var imageBlock = args.imageBlock;
 	var ret;
     switch( args.type ) {
-        case MONOCHROME: {
-			var colorRange = toGrayScale( imageBlock, true );
-			ret = toMonochrome( imageBlock, colorRange );
-            break;
-        }
-        case MONOCHROME_BAYER: {
-			toGrayScale( imageBlock, true );
-			ret = toMonochromeBayer( imageBlock );
-            break;
-        }
+		case MONOCHROME:
 		case MONOCHROME_FLOYD:
 		case MONOCHROME_STUCKI:
 		case MONOCHROME_BURKES:
@@ -701,9 +679,14 @@ self.addEventListener( 'message', function( e ) {
 		case MONOCHROME_JARVIS_JUDICE_NINKE:
 		case MONOCHROME_STEVENSON_ARCE: {
 			var colorRange = toGrayScale( imageBlock, true );
-			ret = toMonochromeUsingFilter( imageBlock, colorRange, filterTables[args.type] );
+			ret = toMonochrome( imageBlock, colorRange, filterTables[args.type] );
 			break;
 		}
+		case MONOCHROME_BAYER: {
+			toGrayScale( imageBlock, true );
+			ret = toMonochromeBayer( imageBlock );
+            break;
+        }
 
 		case GRAY_SCALE: {
 			var colorRange = toGrayScale( imageBlock, false );
@@ -711,13 +694,14 @@ self.addEventListener( 'message', function( e ) {
 			break;
 		}
 
+		case _256_COLORS:
 		case _256_COLORS_FLOYD:
 		case _256_COLORS_STUCKI:
 		case _256_COLORS_BURKES:
 		case _256_COLORS_SIERRA:
 		case _256_COLORS_JARVIS_JUDICE_NINKE:
 		case _256_COLORS_STEVENSON_ARCE: {
-			ret = to256ColorsUsingFilter( imageBlock, filterTables[args.type] );
+			ret = to256Colors( imageBlock, filterTables[args.type] );
 			break;
 		}
 

@@ -80,6 +80,24 @@ var Test = {
 	},
 
 	cases: [
+		function() { // to 256 without filter
+			console.log( 'TEST #: to 256 without filter test' );
+			var imageBlock = Test.start();
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
+		},
 		function() { // floyd dithering test
 			console.log( 'TEST #: floyd dithering test' );
 			var imageBlock = Test.start();
