@@ -481,7 +481,7 @@ const COLOR_SCALING_INVERSE = 1 / COLOR_SCALING;
 const PALETTE_LENGTH = 256;
 const MAX_COLORS_DISTANCE = 3*Math.pow(255,2) + 4*Math.pow(255,2) + 2*Math.pow(255,2);
 
-var to8ColorsUsingFilter = function( imageBlock, filter ) {
+var to256ColorsUsingFilter = function( imageBlock, filter ) {
 
 	var imageData = imageBlock.imageData;
 	var imageDataLengh = imageData.length;
@@ -661,12 +661,12 @@ const MONOCHROME_STEVENSON_ARCE = 0x08;
 
 const GRAY_SCALE = 0x10;
 
-const _8_COLORS_FLOYD = 0x0100;
-const _8_COLORS_STUCKI = 0x0200;
-const _8_COLORS_BURKES = 0x0300;
-const _8_COLORS_SIERRA = 0x0400;
-const _8_COLORS_JARVIS_JUDICE_NINKE = 0x0500;
-const _8_COLORS_STEVENSON_ARCE = 0x0600;
+const _256_COLORS_FLOYD = 0x0100;
+const _256_COLORS_STUCKI = 0x0200;
+const _256_COLORS_BURKES = 0x0300;
+const _256_COLORS_SIERRA = 0x0400;
+const _256_COLORS_JARVIS_JUDICE_NINKE = 0x0500;
+const _256_COLORS_STEVENSON_ARCE = 0x0600;
 
 var filterTables = {};
 filterTables[MONOCHROME_FLOYD] = FloydTable;
@@ -676,12 +676,12 @@ filterTables[MONOCHROME_SIERRA] = SierraTable;
 filterTables[MONOCHROME_JARVIS_JUDICE_NINKE] = JarvisJudiceNinkeTable;
 filterTables[MONOCHROME_STEVENSON_ARCE] = StevensonArceTable;
 
-filterTables[_8_COLORS_FLOYD] = FloydTable;
-filterTables[_8_COLORS_STUCKI] = StuckiTable;
-filterTables[_8_COLORS_BURKES] = BurkesTable;
-filterTables[_8_COLORS_SIERRA] = SierraTable;
-filterTables[_8_COLORS_JARVIS_JUDICE_NINKE] = JarvisJudiceNinkeTable;
-filterTables[_8_COLORS_STEVENSON_ARCE] = StevensonArceTable;
+filterTables[_256_COLORS_FLOYD] = FloydTable;
+filterTables[_256_COLORS_STUCKI] = StuckiTable;
+filterTables[_256_COLORS_BURKES] = BurkesTable;
+filterTables[_256_COLORS_SIERRA] = SierraTable;
+filterTables[_256_COLORS_JARVIS_JUDICE_NINKE] = JarvisJudiceNinkeTable;
+filterTables[_256_COLORS_STEVENSON_ARCE] = StevensonArceTable;
 
 // *******************************************************
 // *******************************************************
@@ -724,13 +724,13 @@ self.addEventListener( 'message', function( e ) {
 			break;
 		}
 
-		case _8_COLORS_FLOYD:
-		case _8_COLORS_STUCKI:
-		case _8_COLORS_BURKES:
-		case _8_COLORS_SIERRA:
-		case _8_COLORS_JARVIS_JUDICE_NINKE:
-		case _8_COLORS_STEVENSON_ARCE: {
-			ret = to8ColorsUsingFilter( imageBlock, filterTables[args.type] );
+		case _256_COLORS_FLOYD:
+		case _256_COLORS_STUCKI:
+		case _256_COLORS_BURKES:
+		case _256_COLORS_SIERRA:
+		case _256_COLORS_JARVIS_JUDICE_NINKE:
+		case _256_COLORS_STEVENSON_ARCE: {
+			ret = to256ColorsUsingFilter( imageBlock, filterTables[args.type] );
 			break;
 		}
 

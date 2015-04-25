@@ -82,7 +82,7 @@ var Test = {
 		function() { // floyd dithering test
 			console.log( 'TEST #: floyd dithering test' );
 			var imageBlock = Test.start();
-			Test.dither( imageBlock, GIF.DitherType._8_COLORS_FLOYD, function( imageBlock ) {
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS_FLOYD, function( imageBlock ) {
 				if( !imageBlock ) {
 					console.error( 'test dithering fail' );
 					return;
@@ -100,7 +100,7 @@ var Test = {
 		function() { // stucki dithering test
 			console.log( 'TEST #: stucki dithering test' );
 			var imageBlock = Test.start();
-			Test.dither( imageBlock, GIF.DitherType._8_COLORS_STUCKI, function( imageBlock ) {
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS_STUCKI, function( imageBlock ) {
 				if( !imageBlock ) {
 					console.error( 'test dithering fail' );
 					return;
@@ -118,7 +118,7 @@ var Test = {
 		function() { // burkes dithering test
 			console.log( 'TEST #: burkes dithering test' );
 			var imageBlock = Test.start();
-			Test.dither( imageBlock, GIF.DitherType._8_COLORS_BURKES, function( imageBlock ) {
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS_BURKES, function( imageBlock ) {
 				if( !imageBlock ) {
 					console.error( 'test dithering fail' );
 					return;
@@ -136,7 +136,7 @@ var Test = {
 		function() { // sierra dithering test
 			console.log( 'TEST #: sierra dithering test' );
 			var imageBlock = Test.start();
-			Test.dither( imageBlock, GIF.DitherType._8_COLORS_SIERRA, function( imageBlock ) {
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS_SIERRA, function( imageBlock ) {
 				if( !imageBlock ) {
 					console.error( 'test dithering fail' );
 					return;
@@ -154,7 +154,7 @@ var Test = {
 		function() { // jarvis, judice & ninke dithering test
 			console.log( 'TEST #: jarvis, judice & ninke dithering test' );
 			var imageBlock = Test.start();
-			Test.dither( imageBlock, GIF.DitherType._8_COLORS_JARVIS_JUDICE_NINKE, function( imageBlock ) {
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS_JARVIS_JUDICE_NINKE, function( imageBlock ) {
 				if( !imageBlock ) {
 					console.error( 'test dithering fail' );
 					return;
@@ -172,7 +172,7 @@ var Test = {
 		function() { // stevenson & arce dithering test
 			console.log( 'TEST #: stevenson & arce dithering test' );
 			var imageBlock = Test.start();
-			Test.dither( imageBlock, GIF.DitherType._8_COLORS_STEVENSON_ARCE, function( imageBlock ) {
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS_STEVENSON_ARCE, function( imageBlock ) {
 				if( !imageBlock ) {
 					console.error( 'test dithering fail' );
 					return;
