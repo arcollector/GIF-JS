@@ -601,6 +601,7 @@ var to256Colors = function( imageBlock, filter ) {
 		if( numEntries === 0 ) {
 			continue;
 		}
+		var factor = COLOR_SCALING / numEntries;
 		var colors = rgbCubes[i].colors;
 		var rgbAvg = new Uint8Array( [ 0,0,0 ] );
 		for( var j = 0, l = colors.length; j < l; j++ ) {
@@ -609,9 +610,9 @@ var to256Colors = function( imageBlock, filter ) {
 			rgbAvg[1] += rgb[1];
 			rgbAvg[2] += rgb[2];
 		}
-		palette[paletteIndex++] = parseInt( (rgbAvg[0] * COLOR_SCALING) / numEntries );
-		palette[paletteIndex++] = parseInt( (rgbAvg[1] * COLOR_SCALING) / numEntries );
-		palette[paletteIndex++] = parseInt( (rgbAvg[2] * COLOR_SCALING) / numEntries );
+		palette[paletteIndex++] = parseInt( Math.max( 0, Math.min( 255, rgbAvg[0]*factor ) ) );
+		palette[paletteIndex++] = parseInt( Math.max( 0, Math.min( 255, rgbAvg[1]*factor ) ) );
+		palette[paletteIndex++] = parseInt( Math.max( 0, Math.min( 255, rgbAvg[2]*factor ) ) );
 	}
 	// NOTE: paletteIndex may be not equal to 256*3
 
