@@ -8,6 +8,7 @@
 var filenameURL = 'punisher_by_rhinoting.jpg';
 var filenameURL = 'tumblr_mo4yhdu3RG1r88u00o1_1280.jpg';
 var filenameURL = 'haircut.jpg';
+var filenameURL = 'vT4KO.jpg';
 
 GIF.init( {
 	canvasSelector: '.picture',

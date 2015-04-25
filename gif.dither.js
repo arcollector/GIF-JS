@@ -125,6 +125,8 @@ DitherMonochrome.prototype = {
 			}
 		}
 		this.imageBlock.imageData = this.ditheredImageData;
+		this.imageBlock.colorBits = 1;
+		return recalcPalette( this.imageBlock );
 	},
 };
 
@@ -234,14 +236,13 @@ DitherColor.prototype = {
 				var g = this.imageData[i+1];
 				var b = this.imageData[i+2];
 				// search the reemplacement color
-				var curMinDist = MAX_COLORS_DISTANCE;
+				var curMinDist = Number.POSITIVE_INFINITY;
 				var indexPalette = -1;
 				for( var j = 0; j < paletteLength; j += 3 ) {
 					var rPalette = palette[j];
 					var gPalette = palette[j+1];
 					var bPalette = palette[j+2];
 					var dist = 3*Math.pow(rPalette - r, 2) + 4*Math.pow(gPalette - g, 2) + 2*Math.pow(bPalette - b, 2);
-					//var dist = Math.sqrt( Math.pow(rPalette - r, 2) + Math.pow(gPalette - g, 2) + Math.pow(bPalette - b, 2) );
 					if( dist < curMinDist ) {
 						curMinDist = dist;
 						indexPalette = j;
@@ -264,7 +265,6 @@ DitherColor.prototype = {
 			}
 		}
 		this.imageBlock.imageData = this.ditheredImageData;
-
 		this.imageBlock.colorBits = 8;
 		this.imageBlock.palette = palette;
 		return true;
@@ -330,20 +330,11 @@ var toMonochrome = function( imageBlock, colorRange ) {
 		i++;
 	}
 	imageBlock.colorBits = 1;
-	if( !recalcPalette( imageBlock ) ) {
-		return false;
-	}
-	return true;
+	return recalcPalette( imageBlock );
 };
 
 var toMonochromeUsingFilter = function( imageBlock, colorRange, filter ) {
-	new DitherMonochrome( imageBlock, colorRange, filter ).dither();
-
-	imageBlock.colorBits = 1;
-	if( !recalcPalette( imageBlock ) ) {
-		return false;
-	}
-	return true;
+	return new DitherMonochrome( imageBlock, colorRange, filter ).dither();
 };
 
 // *******************************************************
@@ -376,10 +367,7 @@ var toMonochromeBayer = function( imageBlock ) {
 		}
 	}
 	imageBlock.colorBits = 1;
-	if( !recalcPalette( imageBlock ) ) {
-		return false;
-	}
-	return true;
+	return recalcPalette( imageBlock );
 };
 
 // FLOYD DITHER
@@ -479,7 +467,6 @@ const MAX_PRIM_COLOR = (1 << BITS_PER_PRIM_COLOR) - 1;
 const COLOR_SCALING = Math.pow(2, BITS_PER_PRIM_COLOR);
 const COLOR_SCALING_INVERSE = 1 / COLOR_SCALING;
 const PALETTE_LENGTH = 256;
-const MAX_COLORS_DISTANCE = 3*Math.pow(255,2) + 4*Math.pow(255,2) + 2*Math.pow(255,2);
 
 var to256ColorsUsingFilter = function( imageBlock, filter ) {
 
