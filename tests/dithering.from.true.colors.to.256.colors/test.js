@@ -6,6 +6,8 @@
 // in chrome you need to enable the flag access-files-from-file
 
 var filenameURL = 'punisher_by_rhinoting.jpg';
+var filenameURL = 'tumblr_mo4yhdu3RG1r88u00o1_1280.jpg';
+var filenameURL = 'haircut.jpg';
 
 GIF.init( {
 	canvasSelector: '.picture',
