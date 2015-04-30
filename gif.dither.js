@@ -47,7 +47,7 @@ var initDither = function( instance, imageBlock, colorRange, ditherData ) {
 	}
 	instance.ditheredImageData = new Uint8Array( instance.width * instance.height * 4 );
 	if( ditherData ) {
-		instance.filter = true;
+		instance.hasFilter = true;
 		instance.ditherTable = ditherData.table;
 		instance.ditherTableRows = ditherData.rows;
 		instance.ditherTableCols = ditherData.cols;
@@ -57,7 +57,7 @@ var initDither = function( instance, imageBlock, colorRange, ditherData ) {
 			instance.ditherTableTotal += ditherData.table[i];
 		}
 	} else {
-		instance.filter = false;
+		instance.hasFilter = false;
 	}
 };
 
@@ -124,7 +124,7 @@ DitherMonochrome.prototype = {
 				this.ditheredImageData[i++] = whiteOrBlack;
 				this.ditheredImageData[i++] = whiteOrBlack;
 				this.ditheredImageData[i++] = 255;
-				this.filter && this.setDiffusionError( x, y, error );
+				this.hasFilter && this.setDiffusionError( x, y, error );
 			}
 		}
 		this.imageBlock.imageData = this.ditheredImageData;
@@ -264,7 +264,7 @@ DitherColor.prototype = {
 				this.ditheredImageData[i++] = mg;
 				this.ditheredImageData[i++] = mb;
 				this.ditheredImageData[i++] = 255;
-				this.filter && this.setDiffusionError( x, y, r, g, b, mr, mg, mb );
+				this.hasFilter && this.setDiffusionError( x, y, r, g, b, mr, mg, mb );
 			}
 		}
 		this.imageBlock.imageData = this.ditheredImageData;
