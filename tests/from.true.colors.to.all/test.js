@@ -5,20 +5,21 @@
 // in firefox you need to setup the option fileuri.strict_origin_policy to false
 // in chrome you need to enable the flag access-files-from-file
 
-var filenameURL = 'A.New.Hope.Hungary.gif'; // LZWMinCodeSize = 8
+var filenameURL = 'lightning.jpg';
 
 GIF.init( {
 	canvasSelector: '.picture',
 	libPath: '../../', // relative from the ubication of this file
-	imagesPath: 'tests/dithering.from.256.colors.to.monochrome', // relative from the ubication of gif.decoder.js file
+	imagePath: '', // dont use imagePath when you need to call image2Gif
 } );
 
-GIF.decode( filenameURL, function( imagesBlock ) {
-	if( !imagesBlock ) {
+GIF.loadImage( filenameURL, function( imageBlock ) {
+	if( !imageBlock ) {
+		console.error( 'fail to load image' );
 		return;
 	}
 
-	Test.init( imagesBlock[0] ); // use the first image as test bed
+	Test.init( imageBlock );
 } );
 
 var Test = {
@@ -62,17 +63,16 @@ var Test = {
 			{
 				canvasWidth: imageBlock.canvasWidth,
 				canvasHeight: imageBlock.canvasHeight,
-				backgroundColorIndex: imageBlock.backgroundColorIndex,
 				colorBits: imageBlock.colorBits,
 				palette: imageBlock.palette,
 				bitmaps: [ {
-					isInterlaced: imageBlock.isInterlaced, // (optional)
-					top: imageBlock.top, // (optional, 0 default)
-					left: imageBlock.left, // (optional, 0 default)
-					width: imageBlock.width,
-					height: imageBlock.height,
-					imageData: imageBlock.imageData,
 					isUncompressed: false,
+					isInterlaced: false,
+					top: 0,
+					left: 0,
+					width: imageBlock.canvasWidth,
+					height: imageBlock.canvasHeight,
+					imageData: imageBlock.imageData,
 				} ],
 			},
 			callback
@@ -86,51 +86,51 @@ var Test = {
 	},
 
 	cases: [
-		function() { // gray scale test
-			console.log( 'TEST #: gray scale test' );
-			var imageBlock = Test.getImageBlock();
-			Test.start();
-			Test.dither( imageBlock, GIF.DitherType.GRAY_SCALE, function( imageBlock ) {
-				if( !imageBlock ) {
-					console.error( 'test dithering fail' );
-					return;
-				}
-				Test.display( imageBlock );
-				Test.encode( imageBlock, function( file ) {
-					Test.end();
-					if( !file ) {
-						console.error( 'test encoding fail' );
-						return;
-					}
-					Test.download( file );
-				} );
-			} );
-		},
-		function() { // monochrome test
-			console.log( 'TEST #: monochrome test' );
-			var imageBlock = Test.getImageBlock();
-			Test.start();
-			Test.dither( imageBlock, GIF.DitherType.MONOCHROME, function( imageBlock ) {
-				if( !imageBlock ) {
-					console.error( 'test dithering fail' );
-					return;
-				}
-				Test.display( imageBlock );
-				Test.encode( imageBlock, function( file ) {
-					Test.end();
-					if( !file ) {
-						console.error( 'test encoding fail' );
-						return;
-					}
-					Test.download( file );
-				} );
-			} );
-		},
-		function() { // bayer dithering test
-			console.log( 'TEST #: bayer dithering test' );
+		function() { // to bayer monochorme
+			console.log( 'TEST #: to Bayer monochorme' );
 			var imageBlock = Test.getImageBlock();
 			Test.start();
 			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_BAYER, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					Test.end();
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
+		},
+		function() { // to monochorme floyd
+			console.log( 'TEST #: to monochorme using floyd filtering' );
+			var imageBlock = Test.getImageBlock();
+			Test.start();
+			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_FLOYD, function( imageBlock ) {
+				if( !imageBlock ) {
+					console.error( 'test dithering fail' );
+					return;
+				}
+				Test.display( imageBlock );
+				Test.encode( imageBlock, function( file ) {
+					Test.end();
+					if( !file ) {
+						console.error( 'test encoding fail' );
+						return;
+					}
+					Test.download( file );
+				} );
+			} );
+		},
+		function() { // to 256 without filter
+			console.log( 'TEST #: to 256 without filter test' );
+			var imageBlock = Test.getImageBlock();
+			Test.start();
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS, function( imageBlock ) {
 				if( !imageBlock ) {
 					console.error( 'test dithering fail' );
 					return;
@@ -150,107 +150,7 @@ var Test = {
 			console.log( 'TEST #: floyd dithering test' );
 			var imageBlock = Test.getImageBlock();
 			Test.start();
-			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_FLOYD, function( imageBlock ) {
-				if( !imageBlock ) {
-					console.error( 'test dithering fail' );
-					return;
-				}
-				Test.display( imageBlock );
-				Test.encode( imageBlock, function( file ) {
-					Test.end();
-					if( !file ) {
-						console.error( 'test encoding fail' );
-						return;
-					}
-					Test.download( file );
-				} );
-			} );
-		},
-		function() { // stucki dithering test
-			console.log( 'TEST #: stucki dithering test' );
-			var imageBlock = Test.getImageBlock();
-			Test.start();
-			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_STUCKI, function( imageBlock ) {
-				if( !imageBlock ) {
-					console.error( 'test dithering fail' );
-					return;
-				}
-				Test.display( imageBlock );
-				Test.encode( imageBlock, function( file ) {
-					Test.end();
-					if( !file ) {
-						console.error( 'test encoding fail' );
-						return;
-					}
-					Test.download( file );
-				} );
-			} );
-		},
-		function() { // burkes dithering test
-			console.log( 'TEST #: burkes dithering test' );
-			var imageBlock = Test.getImageBlock();
-			Test.start();
-			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_BURKES, function( imageBlock ) {
-				if( !imageBlock ) {
-					console.error( 'test dithering fail' );
-					return;
-				}
-				Test.display( imageBlock );
-				Test.encode( imageBlock, function( file ) {
-					Test.end();
-					if( !file ) {
-						console.error( 'test encoding fail' );
-						return;
-					}
-					Test.download( file );
-				} );
-			} );
-		},
-		function() { // sierra dithering test
-			console.log( 'TEST #: sierra dithering test' );
-			var imageBlock = Test.getImageBlock();
-			Test.start();
-			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_SIERRA, function( imageBlock ) {
-				if( !imageBlock ) {
-					console.error( 'test dithering fail' );
-					return;
-				}
-				Test.display( imageBlock );
-				Test.encode( imageBlock, function( file ) {
-					Test.end();
-					if( !file ) {
-						console.error( 'test encoding fail' );
-						return;
-					}
-					Test.download( file );
-				} );
-			} );
-		},
-		function() { // jarvis, judice & ninke dithering test
-			console.log( 'TEST #: jarvis, judice & ninke dithering test' );
-			var imageBlock = Test.getImageBlock();
-			Test.start();
-			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_JARVIS_JUDICE_NINKE, function( imageBlock ) {
-				if( !imageBlock ) {
-					console.error( 'test dithering fail' );
-					return;
-				}
-				Test.display( imageBlock );
-				Test.encode( imageBlock, function( file ) {
-					Test.end();
-					if( !file ) {
-						console.error( 'test encoding fail' );
-						return;
-					}
-					Test.download( file );
-				} );
-			} );
-		},
-		function() { // stevenson & arce dithering test
-			console.log( 'TEST #: stevenson & arce dithering test' );
-			var imageBlock = Test.getImageBlock();
-			Test.start();
-			Test.dither( imageBlock, GIF.DitherType.MONOCHROME_STEVENSON_ARCE, function( imageBlock ) {
+			Test.dither( imageBlock, GIF.DitherType._256_COLORS_FLOYD, function( imageBlock ) {
 				if( !imageBlock ) {
 					console.error( 'test dithering fail' );
 					return;

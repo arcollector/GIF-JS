@@ -222,7 +222,7 @@ DitherColor.prototype = {
 				this.ditheredImageData[i++] = mg;
 				this.ditheredImageData[i++] = mb;
 				this.ditheredImageData[i++] = 255;
-				this.setDiffusionError( x, y, r, g, b, mr, mg, mb );
+				this.hasFilter && this.setDiffusionError( x, y, r, g, b, mr, mg, mb );
 			}
 		}
 		this.imageBlock.imageData = this.ditheredImageData;

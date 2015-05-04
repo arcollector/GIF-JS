@@ -7,7 +7,6 @@
 
 var filenameURL = 'dragonflies_11612.jpg';
 var filenameURL = 'Blue-dragonfly.jpg';
-var filenameURL = 'lightning.jpg';
 var filenameURL = 'punisher_by_rhinoting.jpg';
 
 GIF.init( {
@@ -256,6 +255,7 @@ var Test = {
 				window.removeEventListener( 'keyup' );
 			}
 		} );
+		GIF.display( imageBlock );
 		console.log( 'TEST INIT: press <return> key to trigger first test case' );
 	},
 };
