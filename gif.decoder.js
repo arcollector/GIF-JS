@@ -129,14 +129,16 @@ var processExtensionBlock = function( arrayBuffer, start ) {
 			// omit arrayBuffer[start+3+byteCount+4] because is the block terminator
 			applicationExtension.nextBlockAddress = start + 3 + byteCount + 5;
 		} else {
-			console.warn( 'unknow application extension idetifier', applicationExtension.applicationIdentifier );
+			console.warn( 'unknow application extension identifier', applicationExtension.applicationIdentifier );
 			// eat reaming bytes
 			var offset = start + 2 + byteCount + 1;
 			var totalByteCount = offset + (byteCount = arrayBuffer[offset]);
 			while( byteCount !== 0 ) {
-				byteCount = arrayBuffer[offset+byteCount+1];
+				offset += byteCount + 1;
+				byteCount = arrayBuffer[offset];
 				totalByteCount += byteCount + 1;
 			}
+			// + 1 to put the nextBlockAddress after the terminator identifier
 			applicationExtension.nextBlockAddress = totalByteCount + 1;
 		}
 		return applicationExtension;
@@ -155,35 +157,37 @@ var processExtensionBlock = function( arrayBuffer, start ) {
 		plainTextExtension.textBackgroundColorIndex = arrayBuffer[start+14];
 		var text = [];
 		var byteCount = arrayBuffer[start+15];
-		for( var i = start + 16; ; i++, byteCount-- ) {
+		var offset = start + 16;
+		for( ; ; offset++, byteCount-- ) {
 			if( byteCount === 0 ) {
-				byteCount = arrayBuffer[i++];
+				byteCount = arrayBuffer[offset++];
 				if( byteCount === 0 ) {
 					break;
 				}
 			}
-			text.push( String.fromCharCode( arrayBuffer[i] ) );
+			text.push( String.fromCharCode( arrayBuffer[offset] ) );
 		}
 		plainTextExtension.text = text.join( '' );
-		plainTextExtension.nextBlockAddress = text.length + 1; // +1 to omit the block terminator
+		plainTextExtension.nextBlockAddress = offset; // +1 to omit the block terminator
 		return plainTextExtension;
 
 	} else if( arrayBuffer[start+1] === 0xfe ) { // comment extension
 		var comment = [];
 		var byteCount = arrayBuffer[start+2];
-		for( var i = start + 3; ; i++, byteCount-- ) {
+		var offset = start + 3;
+		for( ; ; offset++, byteCount-- ) {
 			if( byteCount === 0 ) {
-				byteCount = arrayBuffer[i++];
+				byteCount = arrayBuffer[offset++];
 				if( byteCount === 0 ) {
 					break;
 				}
 			}
-			comment.push( String.fromCharCode( arrayBuffer[i] ) );
+			comment.push( String.fromCharCode( arrayBuffer[offset] ) );
 		}
 		var commentExtension = {};
 		commentExtension.type = COMMENT_EXTENSION;
 		commentExtension.comment = comment.join( '' );
-		commentExtension.nextBlockAddress = comment.length + 1 // +1 to omit the block terminator
+		commentExtension.nextBlockAddress = offset;
 		return commentExtension;
 	}
 
@@ -206,7 +210,7 @@ var getImageBlock = function( arrayBuffer, start, header, graphicsControlExtensi
 	imageBlock.width = getInt( arrayBuffer, start+5 );
 	imageBlock.height = getInt( arrayBuffer, start+7 );
 	var localFlag = arrayBuffer[start+9];
-	if( localFlag & 0x80 ) { // imageblock has its own palette data
+	if( localFlag & 0x80 ) { // imageBlock has its own palette data
 		DEBUG&&console.log( 'image has its own palette data' );
 		imageBlock.colorBits = (localFlag & 7) + 1;
 		imageBlock.colorCount = 1 << imageBlock.colorBits;
@@ -290,8 +294,8 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 		return false;
 	}
 
-	var scanLine = new Uint8Array( imageBlock.width*2 ); // make some room
-	var scanLineIndex = 0;
+	var codeStream = new Uint8Array( imageBlock.width * imageBlock.height ); // make some room
+	var codeStreamIndex = 0;
 
 	var clearCode = 1 << LZWMinCodeSize;
 	var endOfInformationCode = clearCode + 1;
@@ -317,24 +321,9 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 	var pass = 0;
 	var row = 0;
 
-	var populateCodeStream = function( colorIndexes ) {
+	var setCodeStream = function( colorIndexes ) {
 		for( var i = 0; i < colorIndexes.length; i++ ) {
-			scanLine[scanLineIndex++] = colorIndexes[i];
-		}
-	};
-
-	var populateImageData = function( width ) {
-		for( var i = 0; i < width; i++ ) {
-			var colorIndex = scanLine[i];
-			if( imageBlock.transparentColorFlag && colorIndex === imageBlock.transparentColorIndex ) {
-				imageDataIndex += 4;
-				continue;
-			}
-			colorIndex *= 3;
-			imageData[imageDataIndex++] = imageBlock.palette[colorIndex];
-			imageData[imageDataIndex++] = imageBlock.palette[colorIndex+1];
-			imageData[imageDataIndex++] = imageBlock.palette[colorIndex+2];
-			imageData[imageDataIndex++] = 255;
+			codeStream[codeStreamIndex++] = colorIndexes[i];
 		}
 	};
 
@@ -348,7 +337,7 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 
 	var wasClearCode = false;
 	var isFirstRun = true;
-
+	
 	for(;;) {
 
 		bitShifter === 0 && getNextPackedCode(); // grab a byte from the code stream
@@ -378,7 +367,7 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 
 		if( wasClearCode ) {
 			// output {CODE} to index stream
-			populateCodeStream( codeTable[code] );
+			setCodeStream( codeTable[code] );
 			wasClearCode = false;
 			prevCode = code;
 			continue;
@@ -410,7 +399,7 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 		// is CODE in the code table?
 		if( code < codeTableIndex ) {
 			// output {CODE} to index stream
-			populateCodeStream( codeTable[code] );
+			setCodeStream( codeTable[code] );
 			// let K be the first index in {CODE}
 			k = codeTable[code][0];
 			// add {CODE-1}+K to the code table
@@ -427,7 +416,7 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 			newCodeData.push( k );
 			codeTable[codeTableIndex] = newCodeData;
 			// output {CODE-1}+K to index stream
-			populateCodeStream( newCodeData );
+			setCodeStream( newCodeData );
 		}
 
 		if( codeTableIndex === curMaxCode && bitsThreshold !== 12 ) {
@@ -437,28 +426,33 @@ var decompressImageBlock = function( arrayBuffer, imageBlock ) {
 		codeTableIndex++;
 
 		prevCode = code;
-
-		if( scanLineIndex >= imageBlock.width ) {
-			populateImageData( imageBlock.width );
-
-			for( var i = imageBlock.width, l = scanLineIndex, scanLineIndex = 0; i < l; i++, scanLineIndex++ ) {
-				scanLine[scanLineIndex] = scanLine[i];
-			}
-
-			if( imageBlock.isInterlaced ) {
-				row += incTable[pass];
-				if( row >= imageBlock.height ) {
-					row = startTable[++pass];
-				}
-				imageDataIndex = (imageDataStartingIndex = (imageBlock.top + row)*imageBlock.canvasWidth*4 + imageBlock.left*4);
-			} else {
-				imageDataIndex = (imageDataStartingIndex += imageBlock.canvasWidth*4);
-			}
-		}
 	}
 
-	populateImageData( scanLineIndex );
+	for( var y = 0, i = 0; y < imageBlock.height; y++ ) {
+		for( var x = 0; x < imageBlock.width; x++ ) {
+			var colorIndex = codeStream[i++];
+			if( imageBlock.transparentColorFlag && colorIndex === imageBlock.transparentColorIndex ) {
+				imageDataIndex += 4;
+				continue;
+			}
+			colorIndex *= 3;
+			imageData[imageDataIndex++] = imageBlock.palette[colorIndex];
+			imageData[imageDataIndex++] = imageBlock.palette[colorIndex+1];
+			imageData[imageDataIndex++] = imageBlock.palette[colorIndex+2];
+			imageData[imageDataIndex++] = 255;
+		}
 
+		if( imageBlock.isInterlaced ) {
+			row += incTable[pass];
+			if( row >= imageBlock.height ) {
+				row = startTable[++pass];
+			}
+			imageDataIndex = (imageDataStartingIndex = (imageBlock.top + row)*imageBlock.canvasWidth*4 + imageBlock.left*4);
+		} else {
+			imageDataIndex = (imageDataStartingIndex += imageBlock.canvasWidth*4);
+		}
+	}
+	
 	//DEBUG && console.log( codeTable );
 	//DEBUG && console.log( arrayBuffer.subarray( imageBlock.compressImageAddress, imageBlock.nextBlockAddress ) );
 
@@ -533,20 +527,26 @@ var processFile = function( arrayBuffer, imagesBlock ) {
 DEBUG = true;
 
 self.addEventListener( 'message', function( e ) {
-	openFile( e.data, function( arrayBuffer ) {
-		if( !arrayBuffer ) {
-			self.postMessage( null );
-			return;
-		}
-		//console.log( arrayBuffer );
-		console.log( 'file size is', arrayBuffer.length, 'bytes long' );
-
-		var imagesBlock = [];
-		if( !processFile( arrayBuffer, imagesBlock ) ) {
-			console.error( 'something went wrong!');
-			self.postMessage( null );
-		} else {
-			self.postMessage( imagesBlock );
-		}
-	} );
+	if( e.data.type === 'filepath' ) {
+		openFile( e.data.data, startDecoding );
+	} else { // type === 'arrayBuffer'
+		startDecoding( e.data.data );
+	}
 } );
+
+var startDecoding = function( arrayBuffer ) {
+	if( !arrayBuffer ) {
+		self.postMessage( null );
+		return;
+	}
+	//console.log( arrayBuffer );
+	console.log( 'file size is', arrayBuffer.length, 'bytes long' );
+	
+	var imagesBlock = [];
+	if( !processFile( arrayBuffer, imagesBlock ) ) {
+		console.error( 'something went wrong!');
+		self.postMessage( null );
+	} else {
+		self.postMessage( imagesBlock );
+	}
+};

@@ -9,7 +9,7 @@ var filenameURL = 'A.New.Hope.Hungary.gif'; // LZWMinCodeSize = 8
 
 GIF.init( {
 	canvasSelector: '.picture',
-	libPath: '../../', // relative from the ubication of this file
+	libPath: '../../', // relative from the ubication of the test.html file
 	imagesPath: 'tests/dithering.from.256.colors.to.monochrome', // relative from the ubication of gif.decoder.js file
 } );
 
@@ -18,7 +18,7 @@ GIF.decode( filenameURL, function( imagesBlock ) {
 		return;
 	}
 
-	Test.init( imagesBlock[0] ); // use the first image as test bed
+	Test.init( imagesBlock[0] ); // use only the first frame of the gif image
 } );
 
 var Test = {
@@ -28,6 +28,7 @@ var Test = {
 	curCase: 0,
 	isRunning: false,
 	timestamp: 0,
+	$canvas: document.querySelector( '.picture' ),
 
 	restoreImageData: function( imageData ) {
 		for( var i = 0; i < Test.imageDataLength; i++ ) {
@@ -54,7 +55,7 @@ var Test = {
 	},
 
 	display: function( imageBlock ) {
-		GIF.display( imageBlock );
+		GIF.displayOnCanvas( imageBlock, Test.$canvas );
 	},
 
 	encode: function( imageBlock, callback ) {
@@ -286,6 +287,10 @@ var Test = {
 				console.warn( 'a test is currently running, please wait...' );
 				return;
 			}
+			if( Test.curCase >= Test.cases.length ) {
+				console.log( 'no more tests' );
+				return;
+			}
 			Test.isRunning = true;
 			Test.cases[Test.curCase]();
 			if( ++Test.curCase === Test.cases.length ) {
@@ -293,7 +298,7 @@ var Test = {
 				window.removeEventListener( 'keyup' );
 			}
 		} );
-		GIF.display( imageBlock );
+		GIF.displayOnCanvas( imageBlock, Test.$canvas );
 		console.log( 'TEST INIT: press <return> key to trigger first test case' );
 	},
 };

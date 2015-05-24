@@ -10,12 +10,11 @@ var filenameURL = 'Blue-dragonfly.jpg';
 var filenameURL = 'punisher_by_rhinoting.jpg';
 
 GIF.init( {
-	canvasSelector: '.picture',
-	libPath: '../../', // relative from the ubication of this file
-	imagePath: '', // dont use imagePath when you need to call image2Gif
+	libPath: '../../', // relative from the ubication of the test.html file
+	imagePath: '', // not need to use where you use loadImageFromURL
 } );
 
-GIF.loadImage( filenameURL, function( imageBlock ) {
+GIF.loadImageFromURL( filenameURL, function( imageBlock ) {
 	if( !imageBlock ) {
 		console.error( 'fail to load image' );
 		return;
@@ -31,6 +30,7 @@ var Test = {
 	curCase: 0,
 	isRunning: false,
 	timestamp: 0,
+	$canvas: document.querySelector( '.picture' ),
 
 	restoreImageData: function( imageData ) {
 		for( var i = 0; i < Test.imageDataLength; i++ ) {
@@ -57,7 +57,7 @@ var Test = {
 	},
 
 	display: function( imageBlock ) {
-		GIF.display( imageBlock );
+		GIF.displayOnCanvas( imageBlock, Test.$canvas );
 	},
 
 	encode: function( imageBlock, callback ) {
@@ -248,6 +248,10 @@ var Test = {
 				console.warn( 'a test is currently running, please wait...' );
 				return;
 			}
+			if( Test.curCase >= Test.cases.length ) {
+				console.log( 'no more tests' );
+				return;
+			}
 			Test.isRunning = true;
 			Test.cases[Test.curCase]();
 			if( ++Test.curCase === Test.cases.length ) {
@@ -255,7 +259,7 @@ var Test = {
 				window.removeEventListener( 'keyup' );
 			}
 		} );
-		GIF.display( imageBlock );
+		GIF.displayOnCanvas( imageBlock, Test.$canvas );
 		console.log( 'TEST INIT: press <return> key to trigger first test case' );
 	},
 };

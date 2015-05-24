@@ -3,28 +3,28 @@
 */
 var GIF = {
 	init: function( options ) {
-		this.$canvas = null;
-		this.ctx = null;
+		this._$canvas = null;
+		this._ctx = null;
 		if( options.canvasSelector ) {
-			this.$canvas = document.querySelector( options.canvasSelector );
-			if( !this.$canvas ) {
+			this._$canvas = document.querySelector( options.canvasSelector );
+			if( !this._$canvas ) {
 				console.error( 'missing elem <canvas> with selector', options.canvasSelector );
 				return;
 			}
-			this.ctx = this.$canvas.getContext( '2d' );
+			this._ctx = this._$canvas.getContext( '2d' );
 		}
 
 		var path = options.libPath || '';
 		path += this._checkPathCorrectness( path );
 
-		this.decoder = new Worker( path + 'gif.decoder.js');
-		this.decoder.addEventListener( 'message', this._decoded.bind( this ) );
+		this._decoder = new Worker( path + 'gif.decoder.js');
+		this._decoder.addEventListener( 'message', this._decoded.bind( this ) );
 
-		this.encoder = new Worker( path + 'gif.encoder.js');
-		this.encoder.addEventListener( 'message', this._encoded.bind( this ) );
+		this._encoder = new Worker( path + 'gif.encoder.js');
+		this._encoder.addEventListener( 'message', this._encoded.bind( this ) );
 
-		this.ditherer = new Worker( path + 'gif.dither.js');
-		this.ditherer.addEventListener( 'message', this._dithered.bind( this ) );
+		this._ditherer = new Worker( path + 'gif.dither.js');
+		this._ditherer.addEventListener( 'message', this._dithered.bind( this ) );
 
 		this._callback = null;
 
@@ -38,39 +38,55 @@ var GIF = {
 			return;
 		}
 		this._callback = callback;
-		this.decoder.postMessage( this._imagesPath + filenameURL );
+		this._decoder.postMessage( { type: 'filepath', data: this._imagesPath + filenameURL } );
 	},
 	_decoded: function( e ) {
 		this._callCallback( e.data );
 	},
-
-	// display can also works with instances of ImageData
-	display: function( imagesBlock, curIndex ) {
-		imagesBlock = !Array.isArray( imagesBlock ) ? [ imagesBlock ] : imagesBlock;
-		curIndex = curIndex || 0;
-		var imageBlock = imagesBlock[curIndex];
-		this._display( imageBlock.imageData || imageBlock.data, imageBlock.canvasWidth || imageBlock.width, imageBlock.canvasHeight || imageBlock.height );
-		if( imagesBlock.length > 1 ) {
-			curIndex = (curIndex + 1) % imagesBlock.length;
-			setTimeout( function() { GIF.display( imagesBlock, curIndex ); }, imageBlock.delayTime/100*1000 );
+	
+	setupAnimation: function( imagesBlock ) {
+		this._lastImagesBlock = imagesBlock;
+		this._curImageBlock = 0;
+		this._stopAnimation = false;
+	},
+	stop: function() {
+		this._stopAnimation = true;
+		this._curImageBlock = 0;
+		this.displayOnCanvas( this._lastImagesBlock[0], this._$canvas );
+	},
+	pause: function() {
+		this._stopAnimation = true;
+	},
+	play: function() {
+		if( this._stopAnimation ) {
+			this._stopAnimation = false;
+			return;
+		}
+		var imageBlock = this._lastImagesBlock[this._curImageBlock];
+		this.displayOnCanvas( imageBlock, this._$canvas );
+		if( this._lastImagesBlock.length > 1 ) {
+			setTimeout( function() {
+				this._curImageBlock = (this._curImageBlock + 1) % this._lastImagesBlock.length;
+				GIF.play();
+			}.bind( GIF ), imageBlock.delayTime/100*1000 );
 		}
 	},
-	_display: function( imageData, width, height ) {
-		this.$canvas.width = width;
-		this.$canvas.height = height;
-	    var realImageData = this.ctx.createImageData( width, height );
-	    // "convert" imageData (an Uint8Array) to a <canvas> image data type
-	    realImageData.data.set( imageData );
-		this.ctx.putImageData( realImageData, 0, 0 );
+	displayOnCanvas: function( imageBlock, $canvasElem ) {
+		var ctx = $canvasElem.getContext( '2d' );
+		var w = $canvasElem.width = imageBlock.canvasWidth;
+		var h = $canvasElem.height = imageBlock.canvasHeight;
+		var image = ctx.createImageData( w, h );
+		image.data.set( imageBlock.imageData );
+		ctx.putImageData( image, 0, 0 );
 	},
-
+	
 	encode: function( options, callback ) {
 		if( typeof callback !== 'function' ) {
 			console.error( 'missing callback param' );
 			return;
 		}
 		this._callback = callback;
-		this.encoder.postMessage( { options: options } );
+		this._encoder.postMessage( { options: options } );
 	},
 	_encoded: function( e ) {
 		this._callCallback( e.data );
@@ -89,30 +105,67 @@ var GIF = {
 		//URL.revokeObjectURL( objectURL ); // in firefox this does not work
 	},
 
-	loadImage: function( filenameURL, callback ) {
+	loadImageFromURL: function( filenameURL, callback ) {
 		if( typeof callback !== 'function' ) {
 			console.error( 'missing callback param' );
-			return;
+			return false;
 		}
 		this._callback = callback;
 		var $img = new Image();
 		$img.src = this._imagesPath + filenameURL;
 		$img.onload = this._imageLoadedOk.bind( this );
 		$img.onerror = this._imageLoadedFail.bind( this );
+		return true;
+	},
+	_imagesType: {
+		'image/bmp': 1,
+		'image/png': 1,
+		'image/gif': 1,
+		'image/jpeg': 1,
+	},
+	loadImageFromFile: function( file, callback ) {
+		if( typeof callback !== 'function' ) {
+			console.error( 'missing callback param' );
+			return false;
+		}
+		if( !(file.type in this._imagesType) ) {
+			console.error( 'file is not an image' );
+			return false;
+		}
+		this._callback = callback;
+		this._fileType = file.type;
+		var reader = new FileReader();
+		reader.onload = this._imageLoadedFromFileOk.bind( this );
+		reader.onerror = this._imageLoadedFail.bind( this );
+		reader.readAsArrayBuffer( file );
+		return true;
+	},
+	_imageLoadedFromFileOk: function( e ) {
+		var arrayBuffer = new Uint8Array( e.target.result );
+		if( this._fileType === 'image/gif' ) { // use own decoder
+			this._decoder.postMessage( { type: 'arrayBuffer', data: arrayBuffer } );
+		} else { // use <img> browser native decoder
+			var $img = new Image();
+			$img.src = URL.createObjectURL( new Blob( [ arrayBuffer ], { type: this._fileType } ) );
+			$img.onload = this._imageLoadedOk.bind( this );
+			$img.onerror = this._imageLoadedFail.bind( this );
+		}
+		this._fileType = null;
 	},
 	_imageLoadedOk: function( e ) {
-		// get the image data by using <canvas> getImageData native function
-		var $canvas = document.createElement( 'canvas' );
+		// get the image.data by using <canvas> getImageData native function
 		var $img = e.target;
+		var $canvas = document.createElement( 'canvas' );
 		var width = $canvas.width = $img.width;
 		var height = $canvas.height = $img.height;
 		var ctx = $canvas.getContext( '2d' );
-		ctx.drawImage( e.target, 0, 0 );
+		ctx.drawImage( $img, 0, 0 );
 		var image = ctx.getImageData( 0, 0, width, height );
+		var imageData = image.data;
 		this._callCallback( {
 			canvasWidth: width,
 			canvasHeight: height,
-			imageData: image.data,
+			imageData: imageData,
 		} );
 	},
 	_imageLoadedFail: function( e ) {
@@ -125,7 +178,7 @@ var GIF = {
 			return;
 		}
 		this._callback = callback;
-		this.ditherer.postMessage( {
+		this._ditherer.postMessage( {
 			imageBlock: imageBlock,
 			type: type
 		} );

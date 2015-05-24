@@ -7,16 +7,17 @@
 
 GIF.init( {
 	canvasSelector: '.picture',
-	libPath: '../../', // relative from the ubication of this file
+	libPath: '../../', // relative from the ubication of the test.html file
 	imagesPath: 'tests/using.gif.files.as.source', // relative from the ubication of gif.decoder.js file
 } );
 
-var filenameURL = 'interlace.gif'; // LZWMinCodeSize = 2 && isInterlaced
 var filenameURL = 'sample_1.gif'; // LZWMinCodeSize = 2
-var filenameURL = 'cb_interlaced.gif'; // LZWMinCodeSize = 8 && isInterlaced
 var filenameURL = 'uncompressed_GIF.gif'; // LZWMinCodeSize = 7
-var filenameURL = 'sample_2_animation.gif'; // LZWMinCodeSize = 3 && imageBlock.top & imageBlock.left not zero
 var filenameURL = 'dummkopfs.gif'; // LZWMinCodeSize = 8
+var filenameURL = 'interlace.gif'; // LZWMinCodeSize = 2 && isInterlaced
+var filenameURL = 'cb_interlaced.gif'; // LZWMinCodeSize = 8 && isInterlaced
+var filenameURL = 'sample_2_animation.gif'; // LZWMinCodeSize = 3 && imageBlock.top & imageBlock.left are not zero
+var filenameURL = 'feels.gif'; // LZWMinCodeSize = 4 && imageBlock.top & imageBlock.left are not zero
 
 // *************************************
 // DECODING EXAMPLE
@@ -26,7 +27,8 @@ GIF.decode( filenameURL, function( imagesBlock ) {
 		return;
 	}
 
-	GIF.display( imagesBlock );
+	GIF.setupAnimation( imagesBlock );
+	GIF.play();
 
 	// *************************************
 	// ENCODING example using the same fetched image

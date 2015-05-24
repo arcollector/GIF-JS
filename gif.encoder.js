@@ -354,6 +354,10 @@ var createFile = function( options ) {
     } );
 
     var bitmaps = options.bitmaps;
+    if( !Array.isArray( bitmaps ) || bitmaps.length === 0 ) {
+	console.error( 'missing bitmaps' );
+	return null;
+    }
 
     var netscapeApplicationExtension = null;
     if( bitmaps.length > 1 ) { // more than 1 image means an animated gif
